@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chemlist - Control de Asistencia</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-navy: #003366; 
+            --accent-green: #2E8B57; 
+            --accent-yellow: #FFC107; 
+            --bg-light: #F4F7F6;
+            --text-dark: #333333;
+            --white: #FFFFFF;
+            --border-radius: 8px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--bg-light); 
+            color: var(--text-dark); 
+            line-height: 1.6;
+            padding: 10px;
+        }
+
+        @media (min-width: 768px) { body { padding: 30px; } }
+
+        .container { 
+            max-width: 900px; 
+            margin: 0 auto; 
+            background: var(--white); 
+            border-radius: var(--border-radius); 
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        header {
+            background-color: var(--primary-navy);
+            color: var(--white);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 5px solid var(--accent-yellow);
+        }
+
+        header h1 { font-size: 1.5rem; }
+
+        .tabs { display: flex; background: #e9ecef; }
+
+        .tab-btn { 
+            flex: 1; background: none; color: var(--primary-navy); border: none; 
+            padding: 15px; cursor: pointer; font-size: 1rem; font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .tab-btn:hover { background: #dee2e6; }
+        .tab-btn.active { background: var(--white); border-bottom: 3px solid var(--accent-green); }
+
+        .tab-content { display: none; padding: 20px; }
+        .tab-content.active { display: block; }
+        
+        h2 { 
+            color: var(--primary-navy); margin-bottom: 20px; font-size: 1.2rem;
+            border-bottom: 2px solid var(--bg-light); padding-bottom: 10px;
+        }
+
+        .controls-container {
+            display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px;
+        }
+
+        select, input[type="date"] { 
+            padding: 10px 15px; font-size: 1rem; border: 1px solid #ccc;
+            border-radius: var(--border-radius); color: var(--primary-navy);
+            font-family: inherit; outline: none; background: var(--white);
+        }
+        select:focus, input[type="date"]:focus { border-color: var(--primary-navy); }
+
+        .student-row { 
+            display: flex; flex-direction: column; background: var(--bg-light);
+            border-radius: var(--border-radius); margin-bottom: 15px; padding: 15px; 
+            border-left: 5px solid var(--primary-navy);
+        }
+
+        @media (min-width: 600px) {
+            .student-row { flex-direction: row; justify-content: space-between; align-items: center; }
+        }
+
+        .student-name { font-weight: 600; margin-bottom: 15px; font-size: 1.1rem; }
+        @media (min-width: 600px) { .student-name { margin-bottom: 0; } }
+
+        .options { display: flex; gap: 10px; flex-wrap: wrap; }
+
+        .options label { 
+            display: flex; flex: 1; justify-content: center; align-items: center;
+            background: var(--white); padding: 10px 12px; border-radius: 20px;
+            border: 1px solid #ccc; cursor: pointer; font-size: 0.9rem;
+        }
+
+        .btn-save { 
+            display: block; width: 100%; background: var(--accent-green); 
+            color: var(--white); border: none; padding: 15px; cursor: pointer; 
+            font-size: 1.1rem; font-weight: 600; border-radius: var(--border-radius);
+            margin-top: 20px; transition: background 0.3s;
+        }
+        .btn-save:hover { background: #246d44; }
+        
+        .table-responsive { overflow-x: auto; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; min-width: 600px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: var(--primary-navy); color: var(--white); }
+        tbody tr:hover { background-color: var(--bg-light); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Departamento de Innovación Educativa</h1>
+            <p>Control de Asistencia</p>
+        </header>
+        
+        <div class="tabs">
+            <button class="tab-btn active" onclick="showTab('lista', this)">📝 Pasar Lista</button>
+            <button class="tab-btn" onclick="showTab('reportes', this)">📊 Reportes</button>
+        </div>
+
+        <div id="lista" class="tab-content active">
+            <h2>Registro Diario</h2>
+            
+            <div class="controls-container">
+                <select id="grupo-select">
+                    <option value="4A">Grupo 4A</option>
+                    <option value="4B">Grupo 4B</option>
+                    <option value="4C">Grupo 4C</option>
+                    <option value="5A">Grupo 5A</option>
+                    <option value="5B">Grupo 5B</option>
+                    <option value="5C">Grupo 5C</option>
+                    <option value="6A" selected>Grupo 6A (Derecho)</option>
+                    <option value="6B">Grupo 6B</option>
+                    <option value="6D">Grupo 6D</option>
+                </select>
+                <input type="date" id="fecha">
+            </div>
+
+            <div id="estudiantes"></div>
+            <button class="btn-save" onclick="guardarAsistencia()">Guardar Asistencia</button>
+        </div>
+
+        <div id="reportes" class="tab-content">
+            <h2>Historial de Registros</h2>
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Grupo</th>
+                            <th>Nombre</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabla-reportes"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

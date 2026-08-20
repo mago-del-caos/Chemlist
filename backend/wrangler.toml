@@ -1,0 +1,8 @@
+name = "chemlist-api"
+main = "src/index.js"
+compatibility_date = "2026-08-20"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "chemlist-db"
+database_id = "844c56d6-4f9c-4ef1-90cc-d1d91d9c0c51"

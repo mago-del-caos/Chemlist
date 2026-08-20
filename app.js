@@ -1,34 +1,58 @@
-const todosLosAlumnos = [
-    { id: 1, nombre: 'Juan', grupo: '6A' },
-    { id: 2, nombre: 'Pedro', grupo: '6A' },
-    { id: 3, nombre: 'Mario', grupo: '6A' }
-    // Aquí puedes añadir más alumnos con su respectivo grupo posteriormente
-];
+const API_URL = 'https://chemlist-api.adrian-camelot32.workers.dev';
+let alumnosGrupo = [];
 
 document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById('fecha').valueAsDate = new Date();
-    document.getElementById('grupo-select').addEventListener('change', renderLista);
-    renderLista();
-    renderReportes();
+    document.getElementById('grupo-select').addEventListener('change', cargarAlumnos);
 });
+
+async function login() {
+    const u = document.getElementById('username').value;
+    const p = document.getElementById('password').value;
+    
+    try {
+        const res = await fetch(`${API_URL}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: u, password: p })
+        });
+        
+        if (res.ok) {
+            const data = await res.json();
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('app-screen').style.display = 'block';
+            document.getElementById('profesor-nombre').innerText = data.profesor.nombre;
+            document.getElementById('fecha').valueAsDate = new Date();
+            cargarAlumnos();
+            cargarReportes();
+        } else {
+            document.getElementById('login-error').style.display = 'block';
+        }
+    } catch (err) {
+        console.error("Error al conectar con la API", err);
+        alert("Error de conexión con el servidor.");
+    }
+}
 
 function showTab(tabId, btn) {
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-    
     document.getElementById(tabId).classList.add('active');
     btn.classList.add('active');
 }
 
+async function cargarAlumnos() {
+    const grupo = document.getElementById('grupo-select').value;
+    const res = await fetch(`${API_URL}/estudiantes?grupo=${grupo}`);
+    alumnosGrupo = await res.json();
+    renderLista();
+}
+
 function renderLista() {
     const container = document.getElementById('estudiantes');
-    const grupoActual = document.getElementById('grupo-select').value;
     container.innerHTML = '';
     
-    const alumnosGrupo = todosLosAlumnos.filter(a => a.grupo === grupoActual);
-    
     if (alumnosGrupo.length === 0) {
-        container.innerHTML = `<p style="text-align:center; padding:20px; color:var(--text-dark);">Aún no hay estudiantes registrados en el grupo ${grupoActual}.</p>`;
+        container.innerHTML = `<p style="text-align:center; padding:20px;">Aún no hay estudiantes registrados en este grupo.</p>`;
         return;
     }
 
@@ -46,44 +70,39 @@ function renderLista() {
     });
 }
 
-function guardarAsistencia() {
+async function guardarAsistencia() {
+    if (alumnosGrupo.length === 0) return alert("No hay alumnos para guardar.");
+    
     const fecha = document.getElementById('fecha').value;
-    const grupoActual = document.getElementById('grupo-select').value;
-    const alumnosGrupo = todosLosAlumnos.filter(a => a.grupo === grupoActual);
+    const asistencias = alumnosGrupo.map(a => ({
+        estudiante_id: a.id,
+        estado: document.querySelector(`input[name="est_${a.id}"]:checked`).value
+    }));
 
-    if (alumnosGrupo.length === 0) {
-        alert(`No hay alumnos en el grupo ${grupoActual} para guardar.`);
-        return;
-    }
-
-    let asistencias = JSON.parse(localStorage.getItem('chemlist_asistencia')) || [];
-
-    alumnosGrupo.forEach(alumno => {
-        const estado = document.querySelector(`input[name="est_${alumno.id}"]:checked`).value;
-        asistencias = asistencias.filter(a => !(a.id === alumno.id && a.fecha === fecha));
-        asistencias.push({ fecha, id: alumno.id, nombre: alumno.nombre, estado, grupo: alumno.grupo });
+    await fetch(`${API_URL}/asistencia`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fecha, asistencias })
     });
-
-    localStorage.setItem('chemlist_asistencia', JSON.stringify(asistencias));
-    alert(`Asistencia del grupo ${grupoActual} guardada en el sistema.`);
-    renderReportes();
+    
+    alert('Asistencia subida a la nube correctamente.');
+    cargarReportes();
 }
 
-function renderReportes() {
+async function cargarReportes() {
+    const res = await fetch(`${API_URL}/reportes`);
+    const reportes = await res.json();
     const tbody = document.getElementById('tabla-reportes');
-    const asistencias = JSON.parse(localStorage.getItem('chemlist_asistencia')) || [];
     tbody.innerHTML = '';
     
-    asistencias.sort((a, b) => new Date(b.fecha) - new Date(a.fecha)).forEach(registro => {
-        let color = registro.estado === 'Presente' ? 'var(--accent-green)' : 
-                    registro.estado === 'Ausente' ? '#D32F2F' : '#D4A000';
-        
+    reportes.forEach(r => {
+        let color = r.estado === 'Presente' ? 'var(--accent-green)' : r.estado === 'Ausente' ? '#D32F2F' : '#D4A000';
         tbody.innerHTML += `
             <tr>
-                <td>${registro.fecha}</td>
-                <td><strong>${registro.grupo}</strong></td>
-                <td>${registro.nombre}</td>
-                <td style="color: ${color}; font-weight: 600;">${registro.estado}</td>
+                <td>${r.fecha}</td>
+                <td><strong>${r.grupo}</strong></td>
+                <td>${r.nombre}</td>
+                <td style="color: ${color}; font-weight: 600;">${r.estado}</td>
             </tr>
         `;
     });

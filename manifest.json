@@ -1,0 +1,9 @@
+{
+  "name": "Chemlist App",
+  "short_name": "Chemlist",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#F4F7F6",
+  "theme_color": "#003366",
+  "icons": [{"src": "logo.png", "sizes": "512x512", "type": "image/png"}]
+}

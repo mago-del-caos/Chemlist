@@ -3,116 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chemlist - Control de Asistencia</title>
+    <title>Chemlist App</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#003366">
+    <link rel="apple-touch-icon" href="logo.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --primary-navy: #003366; --accent-green: #2E8B57; --accent-yellow: #FFC107; 
-            --bg-light: #F4F7F6; --text-dark: #333333; --white: #FFFFFF; --border-radius: 8px;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background-color: var(--bg-light); color: var(--text-dark); line-height: 1.6; padding: 10px; }
+        :root { --nav: #003366; --gr: #2E8B57; --yw: #FFC107; --bg: #F4F7F6; --tx: #333; --rd: 8px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg); color: var(--tx); padding: 10px; }
         @media (min-width: 768px) { body { padding: 30px; } }
-        
-        .container { max-width: 900px; margin: 0 auto; background: var(--white); border-radius: var(--border-radius); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); overflow: hidden; }
-        
-        /* Estilos del Login */
-        .login-container { max-width: 400px; margin: 100px auto; padding: 30px; text-align: center; }
-        .login-container input { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: var(--border-radius); font-size: 1rem; }
-        
-        header { background-color: var(--primary-navy); color: var(--white); padding: 20px; text-align: center; border-bottom: 5px solid var(--accent-yellow); }
-        header h1 { font-size: 1.5rem; }
-        
+        .container { max-width: 900px; margin: 0 auto; background: #FFF; border-radius: var(--rd); overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .login-container { max-width: 400px; margin: 50px auto; padding: 30px; text-align: center; }
+        input[type="text"], input[type="password"], select, input[type="date"] { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: var(--rd); font-size: 1rem; }
+        header { background: var(--nav); color: #FFF; padding: 20px; text-align: center; border-bottom: 5px solid var(--yw); }
         .tabs { display: flex; background: #e9ecef; }
-        .tab-btn { flex: 1; background: none; color: var(--primary-navy); border: none; padding: 15px; cursor: pointer; font-size: 1rem; font-weight: 600; transition: background 0.3s; }
-        .tab-btn:hover { background: #dee2e6; }
-        .tab-btn.active { background: var(--white); border-bottom: 3px solid var(--accent-green); }
+        .tab-btn { flex: 1; background: none; color: var(--nav); border: none; padding: 15px; font-weight: 600; cursor: pointer; }
+        .tab-btn.active { background: #FFF; border-bottom: 3px solid var(--gr); }
         .tab-content { display: none; padding: 20px; }
         .tab-content.active { display: block; }
-        
-        h2 { color: var(--primary-navy); margin-bottom: 20px; font-size: 1.2rem; border-bottom: 2px solid var(--bg-light); padding-bottom: 10px; }
-        .controls-container { display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px; }
-        select, input[type="date"] { padding: 10px 15px; font-size: 1rem; border: 1px solid #ccc; border-radius: var(--border-radius); color: var(--primary-navy); font-family: inherit; outline: none; background: var(--white); }
-        
-        .student-row { display: flex; flex-direction: column; background: var(--bg-light); border-radius: var(--border-radius); margin-bottom: 15px; padding: 15px; border-left: 5px solid var(--primary-navy); }
-        @media (min-width: 600px) { .student-row { flex-direction: row; justify-content: space-between; align-items: center; } .student-name { margin-bottom: 0; } }
-        .student-name { font-weight: 600; margin-bottom: 15px; font-size: 1.1rem; }
-        
-        .options { display: flex; gap: 10px; flex-wrap: wrap; }
-        .options label { display: flex; flex: 1; justify-content: center; align-items: center; background: var(--white); padding: 10px 12px; border-radius: 20px; border: 1px solid #ccc; cursor: pointer; font-size: 0.9rem; }
-        
-        .btn-save { display: block; width: 100%; background: var(--accent-green); color: var(--white); border: none; padding: 15px; cursor: pointer; font-size: 1.1rem; font-weight: 600; border-radius: var(--border-radius); margin-top: 20px; transition: background 0.3s; }
-        .btn-save:hover { background: #246d44; }
-        
-        .table-responsive { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; min-width: 600px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background-color: var(--primary-navy); color: var(--white); }
-        tbody tr:hover { background-color: var(--bg-light); }
+        .student-row { background: var(--bg); padding: 15px; border-radius: var(--rd); margin-bottom: 10px; border-left: 5px solid var(--nav); }
+        .btn { background: var(--nav); color: #FFF; border: none; padding: 10px 15px; border-radius: var(--rd); cursor: pointer; margin-top:5px; font-size: 0.9rem;}
+        .btn-save { width: 100%; background: var(--gr); padding: 15px; font-size: 1.1rem; margin-top: 15px; }
+        .options label { background: #FFF; padding: 8px; border-radius: 20px; border: 1px solid #ccc; cursor: pointer; margin-right: 5px; }
+        .report-box { display:none; margin-top:10px; }
+        .report-box input { width: calc(100% - 100px); display:inline-block; margin-bottom:0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background: var(--nav); color: #FFF; }
+        .badge { background: var(--yw); color: #000; padding: 3px 8px; border-radius: 12px; font-size: 0.8rem; margin-left: 10px; }
     </style>
 </head>
 <body>
-
-    <!-- PANTALLA DE LOGIN -->
     <div id="login-screen" class="container login-container">
-        <h2 style="border:none;">Acceso a Profesores</h2>
+        <img src="logo.png" style="height: 100px; border-radius: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 20px;">
+        <h2>Chemlist</h2>
         <input type="text" id="username" placeholder="Usuario">
         <input type="password" id="password" placeholder="Contraseña">
-        <button class="btn-save" style="margin-top:0;" onclick="login()">Iniciar Sesión</button>
-        <p id="login-error" style="color: #D32F2F; margin-top: 15px; display: none; font-weight: 600;">Credenciales incorrectas</p>
+        <button class="btn btn-save" onclick="login()">Entrar</button>
     </div>
 
-    <!-- PANTALLA PRINCIPAL DE LA APP -->
     <div id="app-screen" class="container" style="display:none;">
         <header>
-            <img src="logo.png" alt="Logo Chemlist" style="height: 90px; margin-bottom: 10px; border-radius: 15px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
-            <h1>Departamento de Innovación Educativa</h1>
-            <p>Control de Asistencia - Bienvenido <span id="profesor-nombre"></span></p>
+            <img src="logo.png" style="height: 60px; border-radius: 10px; margin-bottom: 10px;">
+            <h1>Chemlist <span id="user-role" class="badge"></span></h1>
+            <p><span id="profesor-nombre"></span></p>
         </header>
         
         <div class="tabs">
-            <button class="tab-btn active" onclick="showTab('lista', this)">📝 Pasar Lista</button>
-            <button class="tab-btn" onclick="showTab('reportes', this)">📊 Reportes</button>
+            <button class="tab-btn active" onclick="showTab('lista', this)">📝 Lista</button>
+            <button class="tab-btn" id="btn-historial" onclick="showTab('historial', this)" style="display:none;">📊 Asistencia</button>
+            <button class="tab-btn" id="btn-reportes" onclick="showTab('reportes', this)" style="display:none;">🚨 Reportes</button>
         </div>
 
         <div id="lista" class="tab-content active">
-            <h2>Registro Diario</h2>
-            <div class="controls-container">
-                <select id="grupo-select">
-                    <option value="4A">Grupo 4A</option>
-                    <option value="4B">Grupo 4B</option>
-                    <option value="4C">Grupo 4C</option>
-                    <option value="5A">Grupo 5A</option>
-                    <option value="5B">Grupo 5B</option>
-                    <option value="5C">Grupo 5C</option>
-                    <option value="6A" selected>Grupo 6A (Derecho)</option>
-                    <option value="6B">Grupo 6B</option>
-                    <option value="6D">Grupo 6D</option>
-                </select>
-                <input type="date" id="fecha">
-            </div>
+            <select id="grupo-select"></select>
+            <input type="date" id="fecha">
             <div id="estudiantes"></div>
-            <button class="btn-save" onclick="guardarAsistencia()">Guardar Asistencia</button>
+            <button class="btn btn-save" onclick="guardarAsistencia()">Guardar Asistencia</button>
+        </div>
+
+        <div id="historial" class="tab-content">
+            <select id="filtro-tiempo" onchange="cargarHistorial()">
+                <option value="dia">Hoy</option>
+                <option value="semana">Esta Semana</option>
+                <option value="mes">Este Mes</option>
+            </select>
+            <div style="overflow-x:auto;">
+                <table><thead><tr><th>Fecha</th><th>Grupo</th><th>Nombre</th><th>Estado</th></tr></thead><tbody id="tabla-historial"></tbody></table>
+            </div>
         </div>
 
         <div id="reportes" class="tab-content">
-            <h2>Historial de Registros en la Nube</h2>
-            <div class="table-responsive">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Fecha</th>
-                            <th>Grupo</th>
-                            <th>Nombre</th>
-                            <th>Estado</th>
-                        </tr>
-                    </thead>
-                    <tbody id="tabla-reportes"></tbody>
-                </table>
+            <h3 style="margin-bottom:10px;">Incidentes Disciplinarios</h3>
+            <div style="overflow-x:auto;">
+                <table><thead><tr><th>Fecha</th><th>Grupo</th><th>Alumno</th><th>Motivo</th><th>Reportó</th></tr></thead><tbody id="tabla-reportes"></tbody></table>
             </div>
         </div>
     </div>
-
     <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+    </script>
 </body>
 </html>

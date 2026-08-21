@@ -15,7 +15,7 @@
         @media (min-width: 768px) { body { padding: 30px; } }
         .container { max-width: 900px; margin: 0 auto; background: #FFF; border-radius: var(--rd); overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .login-container { max-width: 400px; margin: 50px auto; padding: 30px; text-align: center; }
-        input[type="text"], input[type="password"], select, input[type="date"] { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: var(--rd); font-size: 1rem; }
+        input[type="text"], input[type="password"], select, input[type="date"] { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: var(--rd); font-size: 0.95rem; }
         header { background: var(--nav); color: #FFF; padding: 20px; text-align: center; border-bottom: 5px solid var(--yw); }
         .tabs { display: flex; background: #e9ecef; flex-wrap: wrap; }
         .tab-btn { flex: 1; min-width: 80px; background: none; color: var(--nav); border: none; padding: 15px 5px; font-weight: 600; cursor: pointer; font-size: 0.9rem;}
@@ -23,16 +23,17 @@
         .tab-content { display: none; padding: 20px; }
         .tab-content.active { display: block; }
         .student-row { background: var(--bg); padding: 15px; border-radius: var(--rd); margin-bottom: 10px; border-left: 5px solid var(--nav); }
-        .btn { background: var(--nav); color: #FFF; border: none; padding: 10px 15px; border-radius: var(--rd); cursor: pointer; margin-top:5px; font-size: 0.9rem;}
+        .btn { background: var(--nav); color: #FFF; border: none; padding: 10px 15px; border-radius: var(--rd); cursor: pointer; font-size: 0.9rem;}
         .btn-save { width: 100%; background: var(--gr); padding: 15px; font-size: 1.1rem; margin-top: 15px; }
-        .options label { background: #FFF; padding: 8px; border-radius: 20px; border: 1px solid #ccc; cursor: pointer; margin-right: 5px; }
+        .options label { background: #FFF; padding: 8px 12px; border-radius: 20px; border: 1px solid #ccc; cursor: pointer; margin-right: 5px; font-weight: bold; }
         .report-box { display:none; margin-top:10px; }
-        .report-box input { width: calc(100% - 100px); display:inline-block; margin-bottom:0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .report-box input { width: calc(100% - 90px); display:inline-block; margin-bottom:0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9rem; }
         th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
         th { background: var(--nav); color: #FFF; }
         .badge { background: var(--yw); color: #000; padding: 3px 8px; border-radius: 12px; font-size: 0.8rem; margin-left: 10px; }
         .admin-panel-section { background: var(--bg); padding: 15px; border-radius: var(--rd); margin-bottom: 20px; border: 1px solid #ddd; }
+        .modalidad-tag { font-size: 0.75rem; background: #ddd; padding: 2px 6px; border-radius: 5px; margin-left: 5px; }
     </style>
 </head>
 <body>
@@ -79,31 +80,59 @@
         </div>
 
         <div id="admin-panel" class="tab-content">
-            <h3 style="margin-bottom:15px; color:var(--nav);">Control Maestro de Grupos</h3>
+            <h3 style="margin-bottom:15px; color:var(--nav);">Control Maestro</h3>
             
+            <div class="admin-panel-section">
+                <h4>👨‍🏫 Gestión de Personal</h4>
+                <div style="display:flex; gap:5px; margin-bottom:10px;">
+                    <input type="text" id="nuevo-prof-user" placeholder="Usuario" style="flex:1;">
+                    <input type="text" id="nuevo-prof-pass" placeholder="Clave" style="flex:1;">
+                    <input type="text" id="nuevo-prof-nom" placeholder="Nombre Real" style="flex:2;">
+                </div>
+                <div style="display:flex; gap:5px; margin-bottom:10px;">
+                    <select id="nuevo-prof-rol" style="flex:1;">
+                        <option value="profesor">Profesor</option>
+                        <option value="prefecto">Prefecto</option>
+                        <option value="admin">Administrador</option>
+                    </select>
+                    <input type="text" id="nuevo-prof-grupos" placeholder="Grupos (ej. 4A,4B o ALL)" style="flex:2;">
+                    <button class="btn" style="background:var(--nav);" onclick="agregarProfesor()">Añadir Personal</button>
+                </div>
+                <button class="btn" onclick="cargarProfesoresAdmin()" style="width:100%; background:#777; margin-bottom:10px;">Cargar/Actualizar Lista de Personal</button>
+                <div id="admin-lista-profesores"></div>
+            </div>
+
             <div class="admin-panel-section">
                 <h4>➕ Alta de Estudiante</h4>
                 <input type="text" id="nuevo-nombre" placeholder="Nombre del Alumno">
                 <input type="text" id="nuevo-grupo" placeholder="Grupo o Materia (ej. MATE4A)">
-                <button class="btn" style="background:var(--gr);" onclick="agregarEstudiante()">Crear e Insertar</button>
+                <select id="nuevo-modalidad">
+                    <option value="Ad lucem">Ad lucem</option>
+                    <option value="360">360</option>
+                    <option value="Multicultural ingles">Multicultural inglés</option>
+                    <option value="Multicultural frances">Multicultural francés</option>
+                </select>
+                <button class="btn" style="background:var(--gr);" onclick="agregarEstudiante()">Crear Alumno</button>
             </div>
 
             <div class="admin-panel-section">
                 <h4>📋 Clonar Lista de Grupo</h4>
-                <p style="font-size:0.8rem; margin-bottom:10px;">Ideal para crear materias con los mismos alumnos.</p>
-                <input type="text" id="grupo-origen" placeholder="Copiar alumnos del grupo (ej. 6A)">
-                <input type="text" id="grupo-destino" placeholder="Pegarlos en el grupo (ej. TALLER6A)">
-                <button class="btn" style="background:var(--nav);" onclick="copiarLista()">Ejecutar Clonación</button>
+                <div style="display:flex; gap:5px;">
+                    <input type="text" id="grupo-origen" placeholder="De: 6A">
+                    <input type="text" id="grupo-destino" placeholder="A: TALLER6A">
+                    <button class="btn" style="background:var(--yw); color:#000;" onclick="copiarLista()">Clonar</button>
+                </div>
             </div>
 
             <div class="admin-panel-section">
-                <h4>✏️ Editar o Eliminar</h4>
-                <select id="admin-grupo-select" onchange="cargarEstudiantesAdmin()"><option value="">Cargando grupos...</option></select>
+                <h4>✏️ Editar o Eliminar Alumnos</h4>
+                <select id="admin-grupo-select" onchange="cargarEstudiantesAdmin()"><option value="">Selecciona grupo...</option></select>
                 <div id="admin-lista-estudiantes" style="margin-top:15px;"></div>
             </div>
         </div>
     </div>
-    <script src="app.js?v=4"></script>
+    <!-- Ojo a este v=5, es el que romperá el caché viejo -->
+    <script src="app.js?v=5"></script>
     <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }</script>
 </body>
 </html>

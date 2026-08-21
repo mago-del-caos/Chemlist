@@ -17,8 +17,8 @@
         .login-container { max-width: 400px; margin: 50px auto; padding: 30px; text-align: center; }
         input[type="text"], input[type="password"], select, input[type="date"] { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: var(--rd); font-size: 1rem; }
         header { background: var(--nav); color: #FFF; padding: 20px; text-align: center; border-bottom: 5px solid var(--yw); }
-        .tabs { display: flex; background: #e9ecef; }
-        .tab-btn { flex: 1; background: none; color: var(--nav); border: none; padding: 15px; font-weight: 600; cursor: pointer; }
+        .tabs { display: flex; background: #e9ecef; flex-wrap: wrap; }
+        .tab-btn { flex: 1; min-width: 80px; background: none; color: var(--nav); border: none; padding: 15px 5px; font-weight: 600; cursor: pointer; font-size: 0.9rem;}
         .tab-btn.active { background: #FFF; border-bottom: 3px solid var(--gr); }
         .tab-content { display: none; padding: 20px; }
         .tab-content.active { display: block; }
@@ -32,6 +32,7 @@
         th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
         th { background: var(--nav); color: #FFF; }
         .badge { background: var(--yw); color: #000; padding: 3px 8px; border-radius: 12px; font-size: 0.8rem; margin-left: 10px; }
+        .admin-panel-section { background: var(--bg); padding: 15px; border-radius: var(--rd); margin-bottom: 20px; border: 1px solid #ddd; }
     </style>
 </head>
 <body>
@@ -52,8 +53,9 @@
         
         <div class="tabs">
             <button class="tab-btn active" onclick="showTab('lista', this)">📝 Lista</button>
-            <button class="tab-btn" id="btn-historial" onclick="showTab('historial', this)" style="display:none;">📊 Asistencia</button>
+            <button class="tab-btn" id="btn-historial" onclick="showTab('historial', this)" style="display:none;">📊 Asistencias</button>
             <button class="tab-btn" id="btn-reportes" onclick="showTab('reportes', this)" style="display:none;">🚨 Reportes</button>
+            <button class="tab-btn" id="btn-admin" onclick="showTab('admin-panel', this)" style="display:none;">⚙️ Admin</button>
         </div>
 
         <div id="lista" class="tab-content active">
@@ -64,11 +66,6 @@
         </div>
 
         <div id="historial" class="tab-content">
-            <select id="filtro-tiempo" onchange="cargarHistorial()">
-                <option value="dia">Hoy</option>
-                <option value="semana">Esta Semana</option>
-                <option value="mes">Este Mes</option>
-            </select>
             <div style="overflow-x:auto;">
                 <table><thead><tr><th>Fecha</th><th>Grupo</th><th>Nombre</th><th>Estado</th></tr></thead><tbody id="tabla-historial"></tbody></table>
             </div>
@@ -80,12 +77,33 @@
                 <table><thead><tr><th>Fecha</th><th>Grupo</th><th>Alumno</th><th>Motivo</th><th>Reportó</th></tr></thead><tbody id="tabla-reportes"></tbody></table>
             </div>
         </div>
+
+        <div id="admin-panel" class="tab-content">
+            <h3 style="margin-bottom:15px; color:var(--nav);">Control Maestro de Grupos</h3>
+            
+            <div class="admin-panel-section">
+                <h4>➕ Alta de Estudiante</h4>
+                <input type="text" id="nuevo-nombre" placeholder="Nombre del Alumno">
+                <input type="text" id="nuevo-grupo" placeholder="Grupo o Materia (ej. MATE4A)">
+                <button class="btn" style="background:var(--gr);" onclick="agregarEstudiante()">Crear e Insertar</button>
+            </div>
+
+            <div class="admin-panel-section">
+                <h4>📋 Clonar Lista de Grupo</h4>
+                <p style="font-size:0.8rem; margin-bottom:10px;">Ideal para crear materias con los mismos alumnos.</p>
+                <input type="text" id="grupo-origen" placeholder="Copiar alumnos del grupo (ej. 6A)">
+                <input type="text" id="grupo-destino" placeholder="Pegarlos en el grupo (ej. TALLER6A)">
+                <button class="btn" style="background:var(--nav);" onclick="copiarLista()">Ejecutar Clonación</button>
+            </div>
+
+            <div class="admin-panel-section">
+                <h4>✏️ Editar o Eliminar</h4>
+                <select id="admin-grupo-select" onchange="cargarEstudiantesAdmin()"><option value="">Cargando grupos...</option></select>
+                <div id="admin-lista-estudiantes" style="margin-top:15px;"></div>
+            </div>
+        </div>
     </div>
     <script src="app.js"></script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js');
-        }
-    </script>
+    <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }</script>
 </body>
 </html>

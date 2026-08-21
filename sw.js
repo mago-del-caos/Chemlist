@@ -1,5 +1,5 @@
-const CACHE_NAME = 'chemlist-v3';
-const urlsToCache = ['./', './index.html', './app.js', './logo.png', './manifest.json'];
+const CACHE_NAME = 'chemlist-v4';
+const urlsToCache = ['./', './index.html', './app.js?v=4', './logo.png', './manifest.json'];
 
 self.addEventListener('install', (e) => {
   // Obliga a la aplicación a instalarse de inmediato

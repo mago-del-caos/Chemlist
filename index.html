@@ -8,6 +8,7 @@
     <meta name="theme-color" content="#003366">
     <link rel="apple-touch-icon" href="logo.png">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         :root { --nav: #003366; --gr: #2E8B57; --yw: #FFC107; --bg: #F4F7F6; --tx: #333; --rd: 8px; }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
@@ -34,6 +35,8 @@
         .badge { background: var(--yw); color: #000; padding: 3px 8px; border-radius: 12px; font-size: 0.8rem; margin-left: 10px; }
         .admin-panel-section { background: var(--bg); padding: 15px; border-radius: var(--rd); margin-bottom: 20px; border: 1px solid #ddd; }
         .modalidad-tag { font-size: 0.75rem; background: #ddd; padding: 2px 6px; border-radius: 5px; margin-left: 5px; }
+        .filtros-container { display: flex; gap: 10px; flex-wrap: wrap; background: var(--bg); padding: 15px; border-radius: var(--rd); margin-bottom: 15px; border: 1px solid #ddd; align-items: center; }
+        .filtros-container > * { flex: 1; min-width: 150px; margin-bottom: 0; }
     </style>
 </head>
 <body>
@@ -67,14 +70,47 @@
         </div>
 
         <div id="historial" class="tab-content">
-            <div style="overflow-x:auto;">
+            <h3 style="margin-bottom:10px; color:var(--nav);">Filtros de Asistencia</h3>
+            <div class="filtros-container">
+                <select id="filtro-grupo"><option value="">Todos los grupos</option></select>
+                <input type="text" id="filtro-estudiante" placeholder="Buscar alumno...">
+                <div style="display:flex; flex-direction:column; min-width: 120px;">
+                    <label style="font-size:0.75rem; font-weight:bold;">Del:</label>
+                    <input type="date" id="filtro-fecha-inicio">
+                </div>
+                <div style="display:flex; flex-direction:column; min-width: 120px;">
+                    <label style="font-size:0.75rem; font-weight:bold;">Al:</label>
+                    <input type="date" id="filtro-fecha-fin">
+                </div>
+                <button class="btn" style="background:var(--nav); height:100%;" onclick="aplicarFiltrosHistorial()">🔍 Filtrar</button>
+                <button class="btn" style="background:#D32F2F; height:100%;" onclick="imprimirPDF()">📄 PDF</button>
+            </div>
+            
+            <div id="area-impresion" style="overflow-x:auto; background:#FFF; padding:10px;">
+                <h2 id="titulo-pdf" style="display:none; text-align:center; color:var(--nav); margin-bottom:15px; border-bottom:2px solid var(--yw); padding-bottom:10px;">Reporte de Asistencias - Chemlist</h2>
                 <table><thead><tr><th>Fecha</th><th>Grupo</th><th>Nombre</th><th>Estado</th></tr></thead><tbody id="tabla-historial"></tbody></table>
             </div>
         </div>
 
         <div id="reportes" class="tab-content">
-            <h3 style="margin-bottom:10px;">Incidentes Disciplinarios</h3>
-            <div style="overflow-x:auto;">
+            <h3 style="margin-bottom:10px; color:var(--nav);">Filtros de Incidentes</h3>
+            <div class="filtros-container">
+                <select id="filtro-grupo-rep"><option value="">Todos los grupos</option></select>
+                <input type="text" id="filtro-estudiante-rep" placeholder="Buscar alumno...">
+                <div style="display:flex; flex-direction:column; min-width: 120px;">
+                    <label style="font-size:0.75rem; font-weight:bold;">Del:</label>
+                    <input type="date" id="filtro-fecha-inicio-rep">
+                </div>
+                <div style="display:flex; flex-direction:column; min-width: 120px;">
+                    <label style="font-size:0.75rem; font-weight:bold;">Al:</label>
+                    <input type="date" id="filtro-fecha-fin-rep">
+                </div>
+                <button class="btn" style="background:var(--nav); height:100%;" onclick="aplicarFiltrosReportes()">🔍 Filtrar</button>
+                <button class="btn" style="background:#D32F2F; height:100%;" onclick="imprimirPDFReportes()">📄 PDF</button>
+            </div>
+            
+            <div id="area-impresion-reportes" style="overflow-x:auto; background:#FFF; padding:10px;">
+                <h2 id="titulo-pdf-rep" style="display:none; text-align:center; color:var(--nav); margin-bottom:15px; border-bottom:2px solid var(--yw); padding-bottom:10px;">Historial de Reportes Disciplinarios - Chemlist</h2>
                 <table><thead><tr><th>Fecha</th><th>Grupo</th><th>Alumno</th><th>Motivo</th><th>Reportó</th></tr></thead><tbody id="tabla-reportes"></tbody></table>
             </div>
         </div>
@@ -98,7 +134,7 @@
                     <input type="text" id="nuevo-prof-grupos" placeholder="Grupos (ej. 4A,4B o ALL)" style="flex:2;">
                     <button class="btn" style="background:var(--nav);" onclick="agregarProfesor()">Añadir Personal</button>
                 </div>
-                <button class="btn" onclick="cargarProfesoresAdmin()" style="width:100%; background:#777; margin-bottom:10px;">Cargar/Actualizar Lista de Personal</button>
+                <button class="btn" onclick="cargarProfesoresAdmin()" style="width:100%; background:#777; margin-bottom:10px;">Cargar Lista de Personal</button>
                 <div id="admin-lista-profesores"></div>
             </div>
 
@@ -131,8 +167,7 @@
             </div>
         </div>
     </div>
-    <!-- Ojo a este v=5, es el que romperá el caché viejo -->
-    <script src="app.js?v=5"></script>
+    <script src="app.js?v=7"></script>
     <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }</script>
 </body>
 </html>

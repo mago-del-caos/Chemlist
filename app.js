@@ -1,6 +1,8 @@
 const API_URL = 'https://chemlist-api.adrian-camelot32.workers.dev';
 let currentUser = null;
 let alumnosGrupo = [];
+let historialCompleto = [];
+let reportesCompleto = [];
 
 document.getElementById('grupo-select').addEventListener('change', cargarAlumnos);
 
@@ -25,18 +27,32 @@ async function login() {
 async function configurarAccesos() {
     const select = document.getElementById('grupo-select');
     const adminSelect = document.getElementById('admin-grupo-select');
+    const filtroGrupo = document.getElementById('filtro-grupo');
+    const filtroGrupoRep = document.getElementById('filtro-grupo-rep');
+    
     select.innerHTML = '';
     adminSelect.innerHTML = '<option value="">Selecciona un grupo...</option>';
+    filtroGrupo.innerHTML = '<option value="">Todos mis grupos</option>';
+    filtroGrupoRep.innerHTML = '<option value="">Todos mis grupos</option>';
     
     const res = await fetch(`${API_URL}/grupos`);
     const gruposDB = await res.json();
     
     let gruposPermitidos = currentUser.grupos === 'ALL' ? gruposDB : currentUser.grupos.split(',');
     
-    gruposPermitidos.forEach(g => select.innerHTML += `<option value="${g}">${g}</option>`);
+    gruposPermitidos.forEach(g => {
+        select.innerHTML += `<option value="${g}">${g}</option>`;
+        filtroGrupo.innerHTML += `<option value="${g}">${g}</option>`;
+        filtroGrupoRep.innerHTML += `<option value="${g}">${g}</option>`;
+    });
     gruposDB.forEach(g => adminSelect.innerHTML += `<option value="${g}">${g}</option>`);
 
     if (currentUser.rol === 'admin' || currentUser.rol === 'prefecto') {
+        document.getElementById('btn-historial').style.display = 'block';
+        document.getElementById('btn-reportes').style.display = 'block';
+        cargarHistorial();
+        cargarReportes();
+    } else if (currentUser.rol === 'profesor') {
         document.getElementById('btn-historial').style.display = 'block';
         document.getElementById('btn-reportes').style.display = 'block';
         cargarHistorial();
@@ -92,7 +108,7 @@ async function enviarReporte(estudianteId, estudianteNombre) {
     alert("Reporte enviado a Prefectura.");
     document.getElementById(`motivo_${estudianteId}`).value = '';
     toggleReporte(estudianteId);
-    if(currentUser.rol === 'admin' || currentUser.rol === 'prefecto') cargarReportes();
+    cargarReportes();
 }
 
 async function guardarAsistencia() {
@@ -101,22 +117,105 @@ async function guardarAsistencia() {
     const asistencias = alumnosGrupo.map(a => ({ estudiante_id: a.id, estado: document.querySelector(`input[name="est_${a.id}"]:checked`).value }));
     await fetch(`${API_URL}/asistencia`, { method: 'POST', body: JSON.stringify({ fecha, asistencias }) });
     alert('Asistencia registrada en la nube.');
-    if(currentUser.rol === 'admin' || currentUser.rol === 'prefecto') cargarHistorial();
+    cargarHistorial();
 }
 
+/* --- HISTORIAL DE ASISTENCIAS --- */
 async function cargarHistorial() {
     const res = await fetch(`${API_URL}/asistencia-historial`);
-    const data = await res.json();
-    document.getElementById('tabla-historial').innerHTML = data.map(r => `<tr><td>${r.fecha}</td><td>${r.grupo}</td><td>${r.nombre}</td><td><b>${r.estado}</b></td></tr>`).join('');
+    let data = await res.json();
+    if (currentUser.rol === 'profesor') {
+        const misGrupos = currentUser.grupos.split(',');
+        data = data.filter(r => misGrupos.includes(r.grupo));
+    }
+    historialCompleto = data;
+    renderizarTablaHistorial(historialCompleto);
 }
 
+function aplicarFiltrosHistorial() {
+    const grupo = document.getElementById('filtro-grupo').value.toLowerCase();
+    const estudiante = document.getElementById('filtro-estudiante').value.toLowerCase();
+    const fechaInicio = document.getElementById('filtro-fecha-inicio').value;
+    const fechaFin = document.getElementById('filtro-fecha-fin').value;
+
+    const filtrados = historialCompleto.filter(r => {
+        const matchGrupo = grupo === '' || r.grupo.toLowerCase().includes(grupo);
+        const matchEstudiante = estudiante === '' || r.nombre.toLowerCase().includes(estudiante);
+        let matchFecha = true;
+        if (fechaInicio && fechaFin) matchFecha = r.fecha >= fechaInicio && r.fecha <= fechaFin;
+        else if (fechaInicio) matchFecha = r.fecha >= fechaInicio;
+        else if (fechaFin) matchFecha = r.fecha <= fechaFin;
+        return matchGrupo && matchEstudiante && matchFecha;
+    });
+    renderizarTablaHistorial(filtrados);
+}
+
+function renderizarTablaHistorial(datos) {
+    document.getElementById('tabla-historial').innerHTML = datos.map(r => {
+        let color = r.estado === 'Presente' ? 'var(--gr)' : r.estado === 'Falta' ? '#D32F2F' : '#D4A000';
+        return `<tr><td>${r.fecha}</td><td><strong>${r.grupo}</strong></td><td>${r.nombre}</td><td style="color:${color}; font-weight:bold;">${r.estado}</td></tr>`;
+    }).join('');
+}
+
+function imprimirPDF() {
+    const elemento = document.getElementById('area-impresion');
+    const titulo = document.getElementById('titulo-pdf');
+    titulo.style.display = 'block';
+    
+    html2pdf().set({
+        margin: 10, filename: `Asistencias_Chemlist_${new Date().toISOString().split('T')[0]}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }).from(elemento).save().then(() => titulo.style.display = 'none');
+}
+
+/* --- HISTORIAL DE REPORTES --- */
 async function cargarReportes() {
     const res = await fetch(`${API_URL}/reportes`);
-    const data = await res.json();
-    document.getElementById('tabla-reportes').innerHTML = data.map(r => `<tr><td>${r.fecha}</td><td><b>${r.grupo}</b></td><td>${r.estudiante_nombre}</td><td>${r.motivo}</td><td><i>${r.profesor_nombre}</i></td></tr>`).join('');
+    let data = await res.json();
+    if (currentUser.rol === 'profesor') {
+        const misGrupos = currentUser.grupos.split(',');
+        data = data.filter(r => misGrupos.includes(r.grupo));
+    }
+    reportesCompleto = data;
+    renderizarTablaReportes(reportesCompleto);
 }
 
-/* --- FUNCIONES DE ADMINISTRADOR --- */
+function aplicarFiltrosReportes() {
+    const grupo = document.getElementById('filtro-grupo-rep').value.toLowerCase();
+    const estudiante = document.getElementById('filtro-estudiante-rep').value.toLowerCase();
+    const fechaInicio = document.getElementById('filtro-fecha-inicio-rep').value;
+    const fechaFin = document.getElementById('filtro-fecha-fin-rep').value;
+
+    const filtrados = reportesCompleto.filter(r => {
+        const matchGrupo = grupo === '' || r.grupo.toLowerCase().includes(grupo);
+        const matchEstudiante = estudiante === '' || r.estudiante_nombre.toLowerCase().includes(estudiante);
+        let matchFecha = true;
+        if (fechaInicio && fechaFin) matchFecha = r.fecha >= fechaInicio && r.fecha <= fechaFin;
+        else if (fechaInicio) matchFecha = r.fecha >= fechaInicio;
+        else if (fechaFin) matchFecha = r.fecha <= fechaFin;
+        return matchGrupo && matchEstudiante && matchFecha;
+    });
+    renderizarTablaReportes(filtrados);
+}
+
+function renderizarTablaReportes(datos) {
+    document.getElementById('tabla-reportes').innerHTML = datos.map(r => `<tr><td>${r.fecha}</td><td><b>${r.grupo}</b></td><td>${r.estudiante_nombre}</td><td>${r.motivo}</td><td><i>${r.profesor_nombre}</i></td></tr>`).join('');
+}
+
+function imprimirPDFReportes() {
+    const elemento = document.getElementById('area-impresion-reportes');
+    const titulo = document.getElementById('titulo-pdf-rep');
+    titulo.style.display = 'block';
+    
+    html2pdf().set({
+        margin: 10, filename: `Reportes_Chemlist_${new Date().toISOString().split('T')[0]}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    }).from(elemento).save().then(() => titulo.style.display = 'none');
+}
+
+/* --- ADMIN --- */
 async function agregarEstudiante() {
     const nombre = document.getElementById('nuevo-nombre').value;
     const grupo = document.getElementById('nuevo-grupo').value;

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chemlist-v2';
+const CACHE_NAME = 'chemlist-v3';
 const urlsToCache = ['./', './index.html', './app.js', './logo.png', './manifest.json'];
 
 self.addEventListener('install', (e) => {

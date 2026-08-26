@@ -14,7 +14,7 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
         body { background: var(--bg); color: var(--tx); padding: 10px; }
         @media (min-width: 768px) { body { padding: 30px; } }
-        .container { max-width: 900px; margin: 0 auto; background: #FFF; border-radius: var(--rd); overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .container { max-width: 900px; margin: 0 auto; background: #FFF; border-radius: var(--rd); overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
         .login-container { max-width: 400px; margin: 50px auto; padding: 30px; text-align: center; }
         input[type="text"], input[type="password"], select, input[type="date"] { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: var(--rd); font-size: 0.95rem; }
         header { background: var(--nav); color: #FFF; padding: 20px; text-align: center; border-bottom: 5px solid var(--yw); }
@@ -73,7 +73,7 @@
             <h3 style="margin-bottom:10px; color:var(--nav);">Filtros de Asistencia</h3>
             <div class="filtros-container">
                 <select id="filtro-grupo"><option value="">Todos los grupos</option></select>
-                <input type="text" id="filtro-estudiante" placeholder="Buscar alumno...">
+                <select id="filtro-estudiante"><option value="">Todos los alumnos</option></select>
                 <div style="display:flex; flex-direction:column; min-width: 120px;">
                     <label style="font-size:0.75rem; font-weight:bold;">Del:</label>
                     <input type="date" id="filtro-fecha-inicio">
@@ -82,8 +82,14 @@
                     <label style="font-size:0.75rem; font-weight:bold;">Al:</label>
                     <input type="date" id="filtro-fecha-fin">
                 </div>
+                <button class="btn" id="btn-materias-historial" onclick="toggleMaterias('historial')" style="display:none; background:#007BFF; height:100%;">📚 Materias</button>
                 <button class="btn" style="background:var(--nav); height:100%;" onclick="aplicarFiltrosHistorial()">🔍 Filtrar</button>
                 <button class="btn" style="background:#D32F2F; height:100%;" onclick="imprimirPDF()">📄 PDF</button>
+            </div>
+            
+            <div id="materias-container-historial" style="display:none; background:#e9ecef; padding:15px; border-radius:var(--rd); margin-bottom:15px;">
+                <strong>Selecciona las materias a incluir en el reporte:</strong>
+                <div id="lista-materias-historial" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;"></div>
             </div>
             
             <div id="area-impresion" style="overflow-x:auto; background:#FFF; padding:10px;">
@@ -96,7 +102,7 @@
             <h3 style="margin-bottom:10px; color:var(--nav);">Filtros de Incidentes</h3>
             <div class="filtros-container">
                 <select id="filtro-grupo-rep"><option value="">Todos los grupos</option></select>
-                <input type="text" id="filtro-estudiante-rep" placeholder="Buscar alumno...">
+                <select id="filtro-estudiante-rep"><option value="">Todos los alumnos</option></select>
                 <div style="display:flex; flex-direction:column; min-width: 120px;">
                     <label style="font-size:0.75rem; font-weight:bold;">Del:</label>
                     <input type="date" id="filtro-fecha-inicio-rep">
@@ -105,8 +111,14 @@
                     <label style="font-size:0.75rem; font-weight:bold;">Al:</label>
                     <input type="date" id="filtro-fecha-fin-rep">
                 </div>
+                <button class="btn" id="btn-materias-reportes" onclick="toggleMaterias('reportes')" style="display:none; background:#007BFF; height:100%;">📚 Materias</button>
                 <button class="btn" style="background:var(--nav); height:100%;" onclick="aplicarFiltrosReportes()">🔍 Filtrar</button>
                 <button class="btn" style="background:#D32F2F; height:100%;" onclick="imprimirPDFReportes()">📄 PDF</button>
+            </div>
+            
+            <div id="materias-container-reportes" style="display:none; background:#e9ecef; padding:15px; border-radius:var(--rd); margin-bottom:15px;">
+                <strong>Selecciona las materias a incluir en el reporte:</strong>
+                <div id="lista-materias-reportes" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;"></div>
             </div>
             
             <div id="area-impresion-reportes" style="overflow-x:auto; background:#FFF; padding:10px;">
@@ -117,7 +129,7 @@
 
         <div id="admin-panel" class="tab-content">
             <h3 style="margin-bottom:15px; color:var(--nav);">Control Maestro</h3>
-            
+            <!-- Admin Panel oculto para no alargar el código visual, pero funciona completo -->
             <div class="admin-panel-section">
                 <h4>👨‍🏫 Gestión de Personal</h4>
                 <div style="display:flex; gap:5px; margin-bottom:10px;">
@@ -165,9 +177,17 @@
                 <select id="admin-grupo-select" onchange="cargarEstudiantesAdmin()"><option value="">Selecciona grupo...</option></select>
                 <div id="admin-lista-estudiantes" style="margin-top:15px;"></div>
             </div>
+            
+            <div class="admin-panel-section" style="border-left: 5px solid #D32F2F;">
+                <h4 style="color:#D32F2F;">⚠️ Peligro: Destruir Grupo</h4>
+                <div style="display:flex; gap:5px;">
+                    <select id="admin-borrar-grupo-select"><option value="">Selecciona grupo...</option></select>
+                    <button class="btn" style="background:#D32F2F;" onclick="eliminarGrupoEntero()">Borrar Grupo</button>
+                </div>
+            </div>
         </div>
     </div>
-    <script src="app.js?v=7"></script>
+    <script src="app.js?v=10"></script>
     <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }</script>
 </body>
 </html>

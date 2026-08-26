@@ -6,6 +6,35 @@ let reportesCompleto = [];
 
 document.getElementById('grupo-select').addEventListener('change', cargarAlumnos);
 
+// Llenado dinámico de alumnos y despliegue del botón materias (Historial)
+document.getElementById('filtro-grupo').addEventListener('change', async (e) => {
+    const grupo = e.target.value;
+    const select = document.getElementById('filtro-estudiante');
+    select.innerHTML = '<option value="">Todos los alumnos</option>';
+    if (grupo) {
+        const res = await fetch(`${API_URL}/estudiantes?grupo=${grupo}`);
+        const estudiantes = await res.json();
+        estudiantes.forEach(est => select.innerHTML += `<option value="${est.nombre.toLowerCase()}">${est.nombre}</option>`);
+    }
+    actualizarMaterias('historial');
+});
+
+// Llenado dinámico de alumnos y despliegue del botón materias (Reportes)
+document.getElementById('filtro-grupo-rep').addEventListener('change', async (e) => {
+    const grupo = e.target.value;
+    const select = document.getElementById('filtro-estudiante-rep');
+    select.innerHTML = '<option value="">Todos los alumnos</option>';
+    if (grupo) {
+        const res = await fetch(`${API_URL}/estudiantes?grupo=${grupo}`);
+        const estudiantes = await res.json();
+        estudiantes.forEach(est => select.innerHTML += `<option value="${est.nombre.toLowerCase()}">${est.nombre}</option>`);
+    }
+    actualizarMaterias('reportes');
+});
+
+document.getElementById('filtro-estudiante').addEventListener('change', () => actualizarMaterias('historial'));
+document.getElementById('filtro-estudiante-rep').addEventListener('change', () => actualizarMaterias('reportes'));
+
 async function login() {
     const u = document.getElementById('username').value;
     const p = document.getElementById('password').value;
@@ -27,11 +56,13 @@ async function login() {
 async function configurarAccesos() {
     const select = document.getElementById('grupo-select');
     const adminSelect = document.getElementById('admin-grupo-select');
+    const borrarSelect = document.getElementById('admin-borrar-grupo-select');
     const filtroGrupo = document.getElementById('filtro-grupo');
     const filtroGrupoRep = document.getElementById('filtro-grupo-rep');
     
     select.innerHTML = '';
     adminSelect.innerHTML = '<option value="">Selecciona un grupo...</option>';
+    if (borrarSelect) borrarSelect.innerHTML = '<option value="">Selecciona grupo a borrar...</option>';
     filtroGrupo.innerHTML = '<option value="">Todos mis grupos</option>';
     filtroGrupoRep.innerHTML = '<option value="">Todos mis grupos</option>';
     
@@ -45,14 +76,12 @@ async function configurarAccesos() {
         filtroGrupo.innerHTML += `<option value="${g}">${g}</option>`;
         filtroGrupoRep.innerHTML += `<option value="${g}">${g}</option>`;
     });
-    gruposDB.forEach(g => adminSelect.innerHTML += `<option value="${g}">${g}</option>`);
+    gruposDB.forEach(g => {
+        adminSelect.innerHTML += `<option value="${g}">${g}</option>`;
+        if (borrarSelect) borrarSelect.innerHTML += `<option value="${g}">${g}</option>`;
+    });
 
-    if (currentUser.rol === 'admin' || currentUser.rol === 'prefecto') {
-        document.getElementById('btn-historial').style.display = 'block';
-        document.getElementById('btn-reportes').style.display = 'block';
-        cargarHistorial();
-        cargarReportes();
-    } else if (currentUser.rol === 'profesor') {
+    if (currentUser.rol === 'admin' || currentUser.rol === 'prefecto' || currentUser.rol === 'profesor') {
         document.getElementById('btn-historial').style.display = 'block';
         document.getElementById('btn-reportes').style.display = 'block';
         cargarHistorial();
@@ -85,7 +114,7 @@ async function cargarAlumnos() {
             <div class="options">
                 <label><input type="radio" name="est_${a.id}" value="Presente" checked> P</label>
                 <label style="color:#D32F2F;"><input type="radio" name="est_${a.id}" value="Falta"> F</label>
-                <label style="color:#D4A000;"><input type="radio" name="est_${a.id}" value="Retardo"> R</label>
+                <label style="color:#007BFF;"><input type="radio" name="est_${a.id}" value="Justificada"> J</label>
                 <button class="btn" onclick="toggleReporte(${a.id})" style="float:right;">⚠️</button>
             </div>
             <div class="report-box" id="rep_${a.id}">
@@ -120,6 +149,44 @@ async function guardarAsistencia() {
     cargarHistorial();
 }
 
+/* --- LOGICA DE MATERIAS MULTIPLES --- */
+function toggleMaterias(origen) {
+    const el = document.getElementById(`materias-container-${origen}`);
+    el.style.display = el.style.display === 'block' ? 'none' : 'block';
+}
+
+function actualizarMaterias(origen) {
+    const isRep = origen === 'reportes';
+    const estudiante = document.getElementById(`filtro-estudiante${isRep ? '-rep' : ''}`).value.toLowerCase();
+    const grupo = document.getElementById(`filtro-grupo${isRep ? '-rep' : ''}`).value;
+    const btn = document.getElementById(`btn-materias-${origen}`);
+    const lista = document.getElementById(`lista-materias-${origen}`);
+    
+    if (!estudiante && !grupo) {
+        btn.style.display = 'none';
+        document.getElementById(`materias-container-${origen}`).style.display = 'none';
+        return;
+    }
+
+    btn.style.display = 'inline-block';
+    
+    let datos = isRep ? reportesCompleto : historialCompleto;
+    let filtrados = datos;
+    
+    if (estudiante) {
+        filtrados = filtrados.filter(r => (r.nombre || r.estudiante_nombre).toLowerCase() === estudiante);
+    } else if (grupo) {
+        filtrados = filtrados.filter(r => r.grupo === grupo);
+    }
+
+    let materias = [...new Set(filtrados.map(r => r.grupo))];
+    lista.innerHTML = materias.map(m => `
+        <label style="background:#FFF; padding:8px 12px; border-radius:20px; border:1px solid #ccc; cursor:pointer; font-size:0.85rem; font-weight:bold;">
+            <input type="checkbox" value="${m}" class="chk-materia-${origen}" checked> ${m}
+        </label>
+    `).join('');
+}
+
 /* --- HISTORIAL DE ASISTENCIAS --- */
 async function cargarHistorial() {
     const res = await fetch(`${API_URL}/asistencia-historial`);
@@ -138,21 +205,33 @@ function aplicarFiltrosHistorial() {
     const fechaInicio = document.getElementById('filtro-fecha-inicio').value;
     const fechaFin = document.getElementById('filtro-fecha-fin').value;
 
+    const checkboxes = document.querySelectorAll('.chk-materia-historial:checked');
+    const materiasSeleccionadas = Array.from(checkboxes).map(c => c.value.toLowerCase());
+    const isMateriasVisible = document.getElementById('materias-container-historial').style.display === 'block';
+
     const filtrados = historialCompleto.filter(r => {
-        const matchGrupo = grupo === '' || r.grupo.toLowerCase().includes(grupo);
         const matchEstudiante = estudiante === '' || r.nombre.toLowerCase().includes(estudiante);
+        
         let matchFecha = true;
         if (fechaInicio && fechaFin) matchFecha = r.fecha >= fechaInicio && r.fecha <= fechaFin;
         else if (fechaInicio) matchFecha = r.fecha >= fechaInicio;
         else if (fechaFin) matchFecha = r.fecha <= fechaFin;
-        return matchGrupo && matchEstudiante && matchFecha;
+        
+        let matchMateria = true;
+        if (isMateriasVisible) {
+            matchMateria = materiasSeleccionadas.includes(r.grupo.toLowerCase());
+        } else {
+            matchMateria = grupo === '' || r.grupo.toLowerCase().includes(grupo);
+        }
+
+        return matchEstudiante && matchFecha && matchMateria;
     });
     renderizarTablaHistorial(filtrados);
 }
 
 function renderizarTablaHistorial(datos) {
     document.getElementById('tabla-historial').innerHTML = datos.map(r => {
-        let color = r.estado === 'Presente' ? 'var(--gr)' : r.estado === 'Falta' ? '#D32F2F' : '#D4A000';
+        let color = r.estado === 'Presente' ? 'var(--gr)' : r.estado === 'Falta' ? '#D32F2F' : '#007BFF';
         return `<tr><td>${r.fecha}</td><td><strong>${r.grupo}</strong></td><td>${r.nombre}</td><td style="color:${color}; font-weight:bold;">${r.estado}</td></tr>`;
     }).join('');
 }
@@ -161,12 +240,7 @@ function imprimirPDF() {
     const elemento = document.getElementById('area-impresion');
     const titulo = document.getElementById('titulo-pdf');
     titulo.style.display = 'block';
-    
-    html2pdf().set({
-        margin: 10, filename: `Asistencias_Chemlist_${new Date().toISOString().split('T')[0]}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    }).from(elemento).save().then(() => titulo.style.display = 'none');
+    html2pdf().set({ margin: 10, filename: `Asistencias_Chemlist_${new Date().toISOString().split('T')[0]}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(elemento).save().then(() => titulo.style.display = 'none');
 }
 
 /* --- HISTORIAL DE REPORTES --- */
@@ -187,14 +261,26 @@ function aplicarFiltrosReportes() {
     const fechaInicio = document.getElementById('filtro-fecha-inicio-rep').value;
     const fechaFin = document.getElementById('filtro-fecha-fin-rep').value;
 
+    const checkboxes = document.querySelectorAll('.chk-materia-reportes:checked');
+    const materiasSeleccionadas = Array.from(checkboxes).map(c => c.value.toLowerCase());
+    const isMateriasVisible = document.getElementById('materias-container-reportes').style.display === 'block';
+
     const filtrados = reportesCompleto.filter(r => {
-        const matchGrupo = grupo === '' || r.grupo.toLowerCase().includes(grupo);
         const matchEstudiante = estudiante === '' || r.estudiante_nombre.toLowerCase().includes(estudiante);
+        
         let matchFecha = true;
         if (fechaInicio && fechaFin) matchFecha = r.fecha >= fechaInicio && r.fecha <= fechaFin;
         else if (fechaInicio) matchFecha = r.fecha >= fechaInicio;
         else if (fechaFin) matchFecha = r.fecha <= fechaFin;
-        return matchGrupo && matchEstudiante && matchFecha;
+        
+        let matchMateria = true;
+        if (isMateriasVisible) {
+            matchMateria = materiasSeleccionadas.includes(r.grupo.toLowerCase());
+        } else {
+            matchMateria = grupo === '' || r.grupo.toLowerCase().includes(grupo);
+        }
+
+        return matchEstudiante && matchFecha && matchMateria;
     });
     renderizarTablaReportes(filtrados);
 }
@@ -207,12 +293,7 @@ function imprimirPDFReportes() {
     const elemento = document.getElementById('area-impresion-reportes');
     const titulo = document.getElementById('titulo-pdf-rep');
     titulo.style.display = 'block';
-    
-    html2pdf().set({
-        margin: 10, filename: `Reportes_Chemlist_${new Date().toISOString().split('T')[0]}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-    }).from(elemento).save().then(() => titulo.style.display = 'none');
+    html2pdf().set({ margin: 10, filename: `Reportes_Chemlist_${new Date().toISOString().split('T')[0]}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(elemento).save().then(() => titulo.style.display = 'none');
 }
 
 /* --- ADMIN --- */
@@ -235,6 +316,19 @@ async function copiarLista() {
     alert(`Lista copiada a ${destino}.`);
     document.getElementById('grupo-origen').value = ''; document.getElementById('grupo-destino').value = '';
     configurarAccesos();
+}
+
+async function eliminarGrupoEntero() {
+    const grupo = document.getElementById('admin-borrar-grupo-select').value;
+    if(!grupo) return alert('Selecciona un grupo para borrar.');
+    const confirmacion = prompt(`⚠️ ATENCIÓN: Vas a eliminar a TODOS los estudiantes del grupo ${grupo}.\n\nPara confirmar, escribe el nombre del grupo exactamente como aparece:`);
+    if (confirmacion === grupo) {
+        await fetch(`${API_URL}/admin/grupo`, { method: 'DELETE', body: JSON.stringify({ grupo }) });
+        alert(`El grupo ${grupo} ha sido destruido por completo.`);
+        configurarAccesos();
+    } else if (confirmacion !== null) {
+        alert('Eliminación cancelada: El texto ingresado no coincide con el nombre del grupo.');
+    }
 }
 
 async function cargarEstudiantesAdmin() {

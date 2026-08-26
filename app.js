@@ -6,34 +6,11 @@ let reportesCompleto = [];
 
 document.getElementById('grupo-select').addEventListener('change', cargarAlumnos);
 
-// Llenado dinámico de alumnos y despliegue del botón materias (Historial)
-document.getElementById('filtro-grupo').addEventListener('change', async (e) => {
-    const grupo = e.target.value;
-    const select = document.getElementById('filtro-estudiante');
-    select.innerHTML = '<option value="">Todos los alumnos</option>';
-    if (grupo) {
-        const res = await fetch(`${API_URL}/estudiantes?grupo=${grupo}`);
-        const estudiantes = await res.json();
-        estudiantes.forEach(est => select.innerHTML += `<option value="${est.nombre.toLowerCase()}">${est.nombre}</option>`);
-    }
-    actualizarMaterias('historial');
-});
-
-// Llenado dinámico de alumnos y despliegue del botón materias (Reportes)
-document.getElementById('filtro-grupo-rep').addEventListener('change', async (e) => {
-    const grupo = e.target.value;
-    const select = document.getElementById('filtro-estudiante-rep');
-    select.innerHTML = '<option value="">Todos los alumnos</option>';
-    if (grupo) {
-        const res = await fetch(`${API_URL}/estudiantes?grupo=${grupo}`);
-        const estudiantes = await res.json();
-        estudiantes.forEach(est => select.innerHTML += `<option value="${est.nombre.toLowerCase()}">${est.nombre}</option>`);
-    }
-    actualizarMaterias('reportes');
-});
-
-document.getElementById('filtro-estudiante').addEventListener('change', () => actualizarMaterias('historial'));
-document.getElementById('filtro-estudiante-rep').addEventListener('change', () => actualizarMaterias('reportes'));
+// Escuchar cambios en los inputs para mostrar/ocultar el panel de materias
+document.getElementById('filtro-grupo').addEventListener('change', () => actualizarMaterias('historial'));
+document.getElementById('filtro-estudiante').addEventListener('input', () => actualizarMaterias('historial'));
+document.getElementById('filtro-grupo-rep').addEventListener('change', () => actualizarMaterias('reportes'));
+document.getElementById('filtro-estudiante-rep').addEventListener('input', () => actualizarMaterias('reportes'));
 
 async function login() {
     const u = document.getElementById('username').value;
@@ -60,26 +37,28 @@ async function configurarAccesos() {
     const filtroGrupo = document.getElementById('filtro-grupo');
     const filtroGrupoRep = document.getElementById('filtro-grupo-rep');
     
-    select.innerHTML = '';
-    adminSelect.innerHTML = '<option value="">Selecciona un grupo...</option>';
-    if (borrarSelect) borrarSelect.innerHTML = '<option value="">Selecciona grupo a borrar...</option>';
-    filtroGrupo.innerHTML = '<option value="">Todos mis grupos</option>';
-    filtroGrupoRep.innerHTML = '<option value="">Todos mis grupos</option>';
-    
     const res = await fetch(`${API_URL}/grupos`);
     const gruposDB = await res.json();
-    
     let gruposPermitidos = currentUser.grupos === 'ALL' ? gruposDB : currentUser.grupos.split(',');
     
+    let htmlSelect = '';
+    let htmlFiltros = '<option value="">Todos mis grupos</option>';
     gruposPermitidos.forEach(g => {
-        select.innerHTML += `<option value="${g}">${g}</option>`;
-        filtroGrupo.innerHTML += `<option value="${g}">${g}</option>`;
-        filtroGrupoRep.innerHTML += `<option value="${g}">${g}</option>`;
+        htmlSelect += `<option value="${g}">${g}</option>`;
+        htmlFiltros += `<option value="${g}">${g}</option>`;
     });
+    select.innerHTML = htmlSelect;
+    filtroGrupo.innerHTML = htmlFiltros;
+    filtroGrupoRep.innerHTML = htmlFiltros;
+
+    let htmlAdmin = '<option value="">Selecciona un grupo...</option>';
+    let htmlBorrar = '<option value="">Selecciona grupo a borrar...</option>';
     gruposDB.forEach(g => {
-        adminSelect.innerHTML += `<option value="${g}">${g}</option>`;
-        if (borrarSelect) borrarSelect.innerHTML += `<option value="${g}">${g}</option>`;
+        htmlAdmin += `<option value="${g}">${g}</option>`;
+        htmlBorrar += `<option value="${g}">${g}</option>`;
     });
+    adminSelect.innerHTML = htmlAdmin;
+    if (borrarSelect) borrarSelect.innerHTML = htmlBorrar;
 
     if (currentUser.rol === 'admin' || currentUser.rol === 'prefecto' || currentUser.rol === 'profesor') {
         document.getElementById('btn-historial').style.display = 'block';
@@ -157,11 +136,12 @@ function toggleMaterias(origen) {
 
 function actualizarMaterias(origen) {
     const isRep = origen === 'reportes';
-    const estudiante = document.getElementById(`filtro-estudiante${isRep ? '-rep' : ''}`).value.toLowerCase();
+    const estudiante = document.getElementById(`filtro-estudiante${isRep ? '-rep' : ''}`).value.toLowerCase().trim();
     const grupo = document.getElementById(`filtro-grupo${isRep ? '-rep' : ''}`).value;
     const btn = document.getElementById(`btn-materias-${origen}`);
     const lista = document.getElementById(`lista-materias-${origen}`);
     
+    // Si no hay texto ni grupo seleccionado, ocultar panel de materias
     if (!estudiante && !grupo) {
         btn.style.display = 'none';
         document.getElementById(`materias-container-${origen}`).style.display = 'none';
@@ -174,7 +154,7 @@ function actualizarMaterias(origen) {
     let filtrados = datos;
     
     if (estudiante) {
-        filtrados = filtrados.filter(r => (r.nombre || r.estudiante_nombre).toLowerCase() === estudiante);
+        filtrados = filtrados.filter(r => (r.nombre || r.estudiante_nombre).toLowerCase().includes(estudiante));
     } else if (grupo) {
         filtrados = filtrados.filter(r => r.grupo === grupo);
     }
@@ -201,7 +181,7 @@ async function cargarHistorial() {
 
 function aplicarFiltrosHistorial() {
     const grupo = document.getElementById('filtro-grupo').value.toLowerCase();
-    const estudiante = document.getElementById('filtro-estudiante').value.toLowerCase();
+    const estudiante = document.getElementById('filtro-estudiante').value.toLowerCase().trim();
     const fechaInicio = document.getElementById('filtro-fecha-inicio').value;
     const fechaFin = document.getElementById('filtro-fecha-fin').value;
 
@@ -257,7 +237,7 @@ async function cargarReportes() {
 
 function aplicarFiltrosReportes() {
     const grupo = document.getElementById('filtro-grupo-rep').value.toLowerCase();
-    const estudiante = document.getElementById('filtro-estudiante-rep').value.toLowerCase();
+    const estudiante = document.getElementById('filtro-estudiante-rep').value.toLowerCase().trim();
     const fechaInicio = document.getElementById('filtro-fecha-inicio-rep').value;
     const fechaFin = document.getElementById('filtro-fecha-fin-rep').value;
 

@@ -73,7 +73,8 @@
             <h3 style="margin-bottom:10px; color:var(--nav);">Filtros de Asistencia</h3>
             <div class="filtros-container">
                 <select id="filtro-grupo"><option value="">Todos los grupos</option></select>
-                <select id="filtro-estudiante"><option value="">Todos los alumnos</option></select>
+                <!-- Regresamos al input de texto -->
+                <input type="text" id="filtro-estudiante" placeholder="Buscar alumno (ej. Juan)...">
                 <div style="display:flex; flex-direction:column; min-width: 120px;">
                     <label style="font-size:0.75rem; font-weight:bold;">Del:</label>
                     <input type="date" id="filtro-fecha-inicio">
@@ -102,7 +103,8 @@
             <h3 style="margin-bottom:10px; color:var(--nav);">Filtros de Incidentes</h3>
             <div class="filtros-container">
                 <select id="filtro-grupo-rep"><option value="">Todos los grupos</option></select>
-                <select id="filtro-estudiante-rep"><option value="">Todos los alumnos</option></select>
+                <!-- Regresamos al input de texto -->
+                <input type="text" id="filtro-estudiante-rep" placeholder="Buscar alumno (ej. Juan)...">
                 <div style="display:flex; flex-direction:column; min-width: 120px;">
                     <label style="font-size:0.75rem; font-weight:bold;">Del:</label>
                     <input type="date" id="filtro-fecha-inicio-rep">
@@ -129,7 +131,6 @@
 
         <div id="admin-panel" class="tab-content">
             <h3 style="margin-bottom:15px; color:var(--nav);">Control Maestro</h3>
-            <!-- Admin Panel oculto para no alargar el código visual, pero funciona completo -->
             <div class="admin-panel-section">
                 <h4>👨‍🏫 Gestión de Personal</h4>
                 <div style="display:flex; gap:5px; margin-bottom:10px;">
@@ -187,7 +188,7 @@
             </div>
         </div>
     </div>
-    <script src="app.js?v=10"></script>
+    <script src="app.js?v=12"></script>
     <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }</script>
 </body>
 </html>

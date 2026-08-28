@@ -128,20 +128,29 @@
             
             <div class="admin-panel-section">
                 <h4>👨‍🏫 Gestión de Personal</h4>
+                <p style="font-size:0.8rem; margin-bottom:10px;">Selecciona el rol y marca las casillas con los grupos o materias que el profesor podrá ver.</p>
+                
                 <div style="display:flex; gap:5px; margin-bottom:10px;">
                     <input type="text" id="nuevo-prof-user" placeholder="Usuario" style="flex:1;">
                     <input type="text" id="nuevo-prof-pass" placeholder="Clave" style="flex:1;">
                     <input type="text" id="nuevo-prof-nom" placeholder="Nombre Real" style="flex:2;">
                 </div>
-                <div style="display:flex; gap:5px; margin-bottom:10px;">
-                    <select id="nuevo-prof-rol" style="flex:1;">
-                        <option value="profesor">Profesor</option>
-                        <option value="prefecto">Prefecto</option>
-                        <option value="admin">Administrador</option>
-                    </select>
-                    <input type="text" id="nuevo-prof-grupos" placeholder="Permisos (ej. 6A|Física,4B)" style="flex:2;">
-                    <button class="btn" style="background:var(--nav);" onclick="agregarProfesor()">Añadir Personal</button>
+                <!-- AQUÍ ENTRA LA MAGIA DE LOS CHECKBOXES DINÁMICOS -->
+                <div style="display:flex; gap:5px; margin-bottom:10px; align-items:stretch;">
+                    <div style="flex:1;">
+                        <label style="font-size:0.75rem; font-weight:bold;">Rol del Usuario:</label>
+                        <select id="nuevo-prof-rol" style="width:100%; height:42px; margin:0;" onchange="actualizarUIPermisosNuevo()">
+                            <option value="profesor">Profesor (Materia)</option>
+                            <option value="prefecto">Prefecto (Grupo Completo)</option>
+                            <option value="admin">Administrador (Total)</option>
+                        </select>
+                    </div>
+                    <div id="container-nuevo-permisos" style="flex:2;">
+                        <!-- Se llena con JS -->
+                    </div>
+                    <button class="btn" style="background:var(--nav); height:42px; align-self:flex-end;" onclick="agregarProfesor()">Añadir Personal</button>
                 </div>
+                
                 <button class="btn" onclick="cargarProfesoresAdmin()" style="width:100%; background:#777; margin-bottom:10px;">Cargar Lista de Personal</button>
                 <div id="admin-lista-profesores"></div>
             </div>
@@ -169,19 +178,25 @@
                 <button class="btn" style="background:var(--gr); width:100%; padding:12px;" onclick="agregarGrupoCompleto()">Crear Grupo Base</button>
             </div>
 
-            <!-- SECCIÓN MEJORADA DE EDICIÓN DE MODALIDADES Y ALUMNOS -->
             <div class="admin-panel-section">
                 <h4>✏️ Editar Grupo (Modalidades y Alumnos)</h4>
-                <p style="font-size:0.8rem; margin-bottom:10px;">Ajusta la modalidad de los alumnos de forma individual y guarda todos los cambios de una sola vez.</p>
                 <select id="admin-grupo-select" onchange="cargarEstudiantesAdmin()"><option value="">Selecciona grupo...</option></select>
-                
                 <div id="admin-bulk-actions" style="display:none; margin-top:10px; margin-bottom:15px;">
                     <button class="btn" id="btn-guardar-grupo" style="background:var(--gr); width:100%; font-size:1.1rem; padding:12px; box-shadow: 0 4px 6px rgba(0,0,0,0.2);" onclick="guardarCambiosGrupo()">💾 Guardar Todos los Cambios del Grupo</button>
                 </div>
-
                 <div id="admin-lista-estudiantes"></div>
             </div>
             
+            <div class="admin-panel-section" style="border-left: 5px solid #007BFF;">
+                <h4 style="color:#007BFF;">🔄 Corrección Masiva</h4>
+                <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                    <select id="admin-masivo-grupo-select" style="flex:1; min-width:150px;"><option value="">Selecciona grupo...</option></select>
+                    <input type="text" id="admin-masivo-nuevo-grupo" placeholder="Cambiar a Grupo..." style="flex:1; min-width:150px;">
+                    <input type="text" id="admin-masivo-materia" placeholder="Cambiar a Materia..." style="flex:1; min-width:150px;">
+                    <button class="btn" style="background:#007BFF; flex:1; min-width:150px;" onclick="actualizarGrupoMasivo()">Aplicar a todos</button>
+                </div>
+            </div>
+
             <div class="admin-panel-section" style="border-left: 5px solid #D32F2F;">
                 <h4 style="color:#D32F2F;">⚠️ Peligro: Destruir Grupo Entero</h4>
                 <div style="display:flex; gap:5px;">
@@ -191,7 +206,7 @@
             </div>
         </div>
     </div>
-    <script src="app.js?v=22"></script>
+    <script src="app.js?v=23"></script>
     <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }</script>
 </body>
 </html>

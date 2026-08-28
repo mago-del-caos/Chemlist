@@ -73,7 +73,6 @@
             <h3 style="margin-bottom:10px; color:var(--nav);">Filtros de Asistencia</h3>
             <div class="filtros-container">
                 <select id="filtro-grupo"><option value="">Todos los grupos</option></select>
-                <!-- Regresamos al input de texto -->
                 <input type="text" id="filtro-estudiante" placeholder="Buscar alumno (ej. Juan)...">
                 <div style="display:flex; flex-direction:column; min-width: 120px;">
                     <label style="font-size:0.75rem; font-weight:bold;">Del:</label>
@@ -95,7 +94,7 @@
             
             <div id="area-impresion" style="overflow-x:auto; background:#FFF; padding:10px;">
                 <h2 id="titulo-pdf" style="display:none; text-align:center; color:var(--nav); margin-bottom:15px; border-bottom:2px solid var(--yw); padding-bottom:10px;">Reporte de Asistencias - Chemlist</h2>
-                <table><thead><tr><th>Fecha</th><th>Grupo</th><th>Nombre</th><th>Estado</th></tr></thead><tbody id="tabla-historial"></tbody></table>
+                <table><thead><tr><th>Fecha</th><th>Grupo</th><th>Materia</th><th>Nombre</th><th>Estado</th></tr></thead><tbody id="tabla-historial"></tbody></table>
             </div>
         </div>
 
@@ -103,7 +102,6 @@
             <h3 style="margin-bottom:10px; color:var(--nav);">Filtros de Incidentes</h3>
             <div class="filtros-container">
                 <select id="filtro-grupo-rep"><option value="">Todos los grupos</option></select>
-                <!-- Regresamos al input de texto -->
                 <input type="text" id="filtro-estudiante-rep" placeholder="Buscar alumno (ej. Juan)...">
                 <div style="display:flex; flex-direction:column; min-width: 120px;">
                     <label style="font-size:0.75rem; font-weight:bold;">Del:</label>
@@ -125,7 +123,7 @@
             
             <div id="area-impresion-reportes" style="overflow-x:auto; background:#FFF; padding:10px;">
                 <h2 id="titulo-pdf-rep" style="display:none; text-align:center; color:var(--nav); margin-bottom:15px; border-bottom:2px solid var(--yw); padding-bottom:10px;">Historial de Reportes Disciplinarios - Chemlist</h2>
-                <table><thead><tr><th>Fecha</th><th>Grupo</th><th>Alumno</th><th>Motivo</th><th>Reportó</th></tr></thead><tbody id="tabla-reportes"></tbody></table>
+                <table><thead><tr><th>Fecha</th><th>Grupo</th><th>Materia</th><th>Alumno</th><th>Motivo</th><th>Reportó</th></tr></thead><tbody id="tabla-reportes"></tbody></table>
             </div>
         </div>
 
@@ -153,8 +151,11 @@
 
             <div class="admin-panel-section">
                 <h4>➕ Alta de Estudiante</h4>
-                <input type="text" id="nuevo-nombre" placeholder="Nombre del Alumno">
-                <input type="text" id="nuevo-grupo" placeholder="Grupo o Materia (ej. MATE4A)">
+                <input type="text" id="nuevo-nombre" placeholder="Nombre del Alumno" style="margin-bottom:5px;">
+                <div style="display:flex; gap:5px; margin-bottom:5px;">
+                    <input type="text" id="nuevo-grupo" placeholder="Grupo (ej. 6A)" style="flex:1;">
+                    <input type="text" id="nuevo-materia" placeholder="Materia (ej. Matemáticas)" style="flex:1;">
+                </div>
                 <select id="nuevo-modalidad">
                     <option value="Ad lucem">Ad lucem</option>
                     <option value="360">360</option>
@@ -188,7 +189,7 @@
             </div>
         </div>
     </div>
-    <script src="app.js?v=14"></script>
+    <script src="app.js?v=15"></script>
     <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }</script>
 </body>
 </html>

@@ -105,7 +105,7 @@ async function cargarAlumnos() {
     
     document.getElementById('estudiantes').innerHTML = alumnosGrupo.map(a => `
         <div class="student-row">
-            <strong><a href="#" onclick="verReporteEstudianteDesdeLista('${a.nombre}'); return false;" style="color:var(--nav); text-decoration:none; border-bottom:1px dashed var(--nav); cursor:pointer;">${a.nombre}</a></strong> <span class="modalidad-tag">${a.modalidad || 'Ad lucem'}</span><br><br>
+            <strong><a href="#" onclick="verReporteEstudianteDesdeLista('${a.nombre}'); return false;" style="color:var(--nav); text-decoration:none; border-bottom:1px dashed var(--nav); cursor:pointer;">${a.nombre}</a></strong> <span class="modalidad-tag">${a.materia || 'General'}</span> <span class="modalidad-tag">${a.modalidad || 'Ad lucem'}</span><br><br>
             <div class="options">
                 <label><input type="radio" name="est_${a.id}" value="Presente" checked> P</label>
                 <label style="color:#D32F2F;"><input type="radio" name="est_${a.id}" value="Falta"> F</label>
@@ -221,7 +221,7 @@ function aplicarFiltrosHistorial() {
 function renderizarTablaHistorial(datos) {
     document.getElementById('tabla-historial').innerHTML = datos.map(r => {
         let color = r.estado === 'Presente' ? 'var(--gr)' : r.estado === 'Falta' ? '#D32F2F' : '#007BFF';
-        return `<tr><td>${r.fecha}</td><td><strong>${r.grupo}</strong></td><td><a href="#" onclick="verReporteEstudiante('${r.nombre}', 'historial'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.nombre}</a></td><td style="color:${color}; font-weight:bold;">${r.estado}</td></tr>`;
+        return `<tr><td>${r.fecha}</td><td><strong>${r.grupo}</strong></td><td>${r.materia || 'General'}</td><td><a href="#" onclick="verReporteEstudiante('${r.nombre}', 'historial'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.nombre}</a></td><td style="color:${color}; font-weight:bold;">${r.estado}</td></tr>`;
     }).join('');
 }
 
@@ -270,7 +270,7 @@ function aplicarFiltrosReportes() {
 }
 
 function renderizarTablaReportes(datos) {
-    document.getElementById('tabla-reportes').innerHTML = datos.map(r => `<tr><td>${r.fecha}</td><td><b>${r.grupo}</b></td><td><a href="#" onclick="verReporteEstudiante('${r.estudiante_nombre}', 'reportes'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.estudiante_nombre}</a></td><td>${r.motivo}</td><td><i>${r.profesor_nombre}</i></td></tr>`).join('');
+    document.getElementById('tabla-reportes').innerHTML = datos.map(r => `<tr><td>${r.fecha}</td><td><b>${r.grupo}</b></td><td>${r.materia || 'General'}</td><td><a href="#" onclick="verReporteEstudiante('${r.estudiante_nombre}', 'reportes'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.estudiante_nombre}</a></td><td>${r.motivo}</td><td><i>${r.profesor_nombre}</i></td></tr>`).join('');
 }
 
 function imprimirPDFReportes() {
@@ -284,9 +284,10 @@ function imprimirPDFReportes() {
 async function agregarEstudiante() {
     const nombre = document.getElementById('nuevo-nombre').value;
     const grupo = document.getElementById('nuevo-grupo').value;
+    const materia = document.getElementById('nuevo-materia').value;
     const modalidad = document.getElementById('nuevo-modalidad').value;
-    if(!nombre || !grupo) return alert('Completa los campos');
-    await fetch(`${API_URL}/admin/estudiante`, { method: 'POST', body: JSON.stringify({ nombre, grupo, modalidad }) });
+    if(!nombre || !grupo) return alert('Completa nombre y grupo');
+    await fetch(`${API_URL}/admin/estudiante`, { method: 'POST', body: JSON.stringify({ nombre, grupo, materia, modalidad }) });
     alert('Estudiante guardado.');
     document.getElementById('nuevo-nombre').value = '';
     configurarAccesos();
@@ -323,8 +324,9 @@ async function cargarEstudiantesAdmin() {
     document.getElementById('admin-lista-estudiantes').innerHTML = estudiantes.map(e => `
         <div style="background:#fff; padding:10px; border-radius:8px; margin-bottom:5px; border:1px solid #ccc;">
             <div style="display:flex; gap:5px; margin-bottom:5px;">
-                <input type="text" id="edit_nom_${e.id}" value="${e.nombre}" style="flex:2;">
-                <input type="text" id="edit_gpo_${e.id}" value="${e.grupo}" style="flex:1;">
+                <input type="text" id="edit_nom_${e.id}" value="${e.nombre}" style="flex:2;" placeholder="Nombre">
+                <input type="text" id="edit_gpo_${e.id}" value="${e.grupo}" style="flex:1;" placeholder="Grupo">
+                <input type="text" id="edit_mat_${e.id}" value="${e.materia || ''}" style="flex:1;" placeholder="Materia">
             </div>
             <div style="display:flex; gap:5px;">
                 <select id="edit_mod_${e.id}" style="flex:2;">
@@ -343,8 +345,9 @@ async function cargarEstudiantesAdmin() {
 async function editarEstudiante(id) {
     const nombre = document.getElementById(`edit_nom_${id}`).value;
     const grupo = document.getElementById(`edit_gpo_${id}`).value;
+    const materia = document.getElementById(`edit_mat_${id}`).value;
     const modalidad = document.getElementById(`edit_mod_${id}`).value;
-    await fetch(`${API_URL}/admin/estudiante`, { method: 'PUT', body: JSON.stringify({ id, nombre, grupo, modalidad }) });
+    await fetch(`${API_URL}/admin/estudiante`, { method: 'PUT', body: JSON.stringify({ id, nombre, grupo, materia, modalidad }) });
     alert('Alumno actualizado.');
     configurarAccesos();
 }
@@ -355,12 +358,9 @@ async function eliminarEstudiante(id) {
     cargarEstudiantesAdmin();
 }
 
-/* --- FUNCIÓN MEJORADA: CARGAR PROFESORES ADMIN --- */
 async function cargarProfesoresAdmin() {
     const res = await fetch(`${API_URL}/admin/profesores`);
     const profes = await res.json();
-    
-    // Aquí añadimos indicadores visuales claros (Usuario y Contraseña) y resaltamos la clave.
     document.getElementById('admin-lista-profesores').innerHTML = profes.map(p => `
         <div style="background:#fff; padding:15px; border-radius:8px; margin-bottom:10px; border:1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
             <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
@@ -410,7 +410,7 @@ async function editarProfesor(id) {
     const rol = document.getElementById(`edit_prof_rol_${id}`).value;
     const grupos = document.getElementById(`edit_prof_grupos_${id}`).value;
     await fetch(`${API_URL}/admin/profesor`, { method: 'PUT', body: JSON.stringify({ id, username, password, nombre, rol, grupos }) });
-    alert('¡Datos y contraseña actualizados correctamente!');
+    alert('Personal actualizado.');
     cargarProfesoresAdmin();
 }
 

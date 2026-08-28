@@ -31,7 +31,6 @@ async function configurarAccesos() {
     const res = await fetch(`${API_URL}/grupos`);
     const clasesDB = await res.json(); 
     
-    // MAGIA: El filtro permite "6A" (ve todo el 6A) o "6A|Física" (solo ve Física de 6A)
     let clasesPermitidas = currentUser.grupos === 'ALL' ? clasesDB : clasesDB.filter(c => {
         const permitidos = currentUser.grupos.split(',');
         const combo = `${c.grupo}|${c.materia || ''}`;
@@ -321,24 +320,17 @@ function imprimirPDFReportes() {
     html2pdf().set({ margin: 10, filename: `Reportes_Chemlist_${new Date().toISOString().split('T')[0]}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(elemento).save().then(() => titulo.style.display = 'none');
 }
 
-/* --- ADMIN: LOGICA MASIVA DE GRUPOS Y MATERIAS --- */
+/* --- ADMIN --- */
 async function agregarGrupoCompleto() {
     const nombresTexto = document.getElementById('nuevo-nombres-masivo').value;
     const grupo = document.getElementById('nuevo-grupo').value;
     const materia = document.getElementById('nuevo-materia').value;
     const modalidad = document.getElementById('nuevo-modalidad').value;
-
     if(!nombresTexto.trim() || !grupo) return alert('Por favor pega la lista de alumnos y escribe el nombre del grupo.');
-
     const nombresArray = nombresTexto.split('\n').map(n => n.trim()).filter(n => n !== '');
     if(nombresArray.length === 0) return alert('No se detectaron nombres válidos.');
-
-    await fetch(`${API_URL}/admin/estudiantes-masivo`, {
-        method: 'POST',
-        body: JSON.stringify({ nombres: nombresArray, grupo, materia, modalidad })
-    });
-
-    alert(`✅ ¡Excelente! Se ha creado el grupo base "${grupo}" con ${nombresArray.length} alumnos.`);
+    await fetch(`${API_URL}/admin/estudiantes-masivo`, { method: 'POST', body: JSON.stringify({ nombres: nombresArray, grupo, materia, modalidad }) });
+    alert(`✅ Creado grupo base "${grupo}" con ${nombresArray.length} alumnos.`);
     document.getElementById('nuevo-nombres-masivo').value = '';
     configurarAccesos();
 }
@@ -347,7 +339,6 @@ async function asignarMateriaAGrupo() {
     const grupo = document.getElementById('materia-grupo-origen').value;
     const materia = document.getElementById('materia-nueva').value;
     if(!grupo || !materia) return alert('Selecciona el grupo base y escribe la nueva materia.');
-    
     await fetch(`${API_URL}/admin/asignar-materia`, { method: 'POST', body: JSON.stringify({ grupo, materia }) });
     alert(`✅ Clase de "${materia}" asignada al grupo ${grupo} con éxito.`);
     document.getElementById('materia-nueva').value = '';
@@ -367,12 +358,33 @@ async function actualizarGrupoMasivo() {
 }
 
 async function eliminarGrupoEntero() {
-    const grupo = document.getElementById('admin-borrar-grupo-select').value;
-    if(!grupo) return;
-    if(prompt('Escribe el nombre del grupo para confirmar:') === grupo) {
-        await fetch(`${API_URL}/admin/grupo`, { method: 'DELETE', body: JSON.stringify({ grupo }) });
-        alert('Destruido.');
-        configurarAccesos();
+    const select = document.getElementById('admin-borrar-grupo-select');
+    const grupo = select ? select.value : null;
+    if(!grupo) return alert('Selecciona un grupo para borrar del menú desplegable.');
+
+    const confirmacion = prompt(`⚠️ PELIGRO: Vas a borrar TODO el grupo "${grupo}" y sus materias asociadas.\n\nEscribe el nombre del grupo exactamente para confirmar:`);
+    
+    if (confirmacion !== null) {
+        if (confirmacion.trim() === grupo.trim()) {
+            try {
+                // AQUÍ ESTÁ EL FIX: Usar POST y Headers correctos para que no bloquee
+                const response = await fetch(`${API_URL}/admin/borrar-grupo`, { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ grupo }) 
+                });
+                if(response.ok) {
+                    alert(`✅ El grupo "${grupo}" ha sido destruido por completo.`);
+                    configurarAccesos();
+                } else {
+                    alert('Hubo un error al intentar borrar el grupo en el servidor.');
+                }
+            } catch (err) {
+                alert('Error de conexión: ' + err.message);
+            }
+        } else {
+            alert(`❌ Eliminación cancelada: Escribiste "${confirmacion}", que no coincide con "${grupo}".`);
+        }
     }
 }
 

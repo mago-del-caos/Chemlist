@@ -3,6 +3,7 @@ let currentUser = null;
 let alumnosGrupo = [];
 let historialCompleto = [];
 let reportesCompleto = [];
+let estudiantesEditando = []; // Lista temporal para guardar todo el grupo
 
 document.getElementById('grupo-select').addEventListener('change', cargarAlumnos);
 document.getElementById('admin-masivo-grupo-select')?.addEventListener('change', (e) => {
@@ -22,7 +23,6 @@ async function login() {
         document.getElementById('profesor-nombre').innerText = currentUser.nombre;
         document.getElementById('user-role').innerText = currentUser.rol.toUpperCase();
         document.getElementById('fecha').valueAsDate = new Date();
-        
         configurarAccesos();
     } else { alert("Credenciales incorrectas"); }
 }
@@ -69,7 +69,6 @@ async function configurarAccesos() {
         cargarHistorial();
         cargarReportes();
     }
-    
     if (currentUser.rol === 'admin') {
         document.getElementById('btn-admin').style.display = 'block';
         cargarProfesoresAdmin();
@@ -99,7 +98,6 @@ function obtenerFechasFiltro(origen) {
             fin: document.getElementById(`filtro-fecha-fin${origen === 'reportes' ? '-rep' : ''}`).value
         };
     }
-
     const hoy = new Date();
     const str = (d) => { const x = new Date(d); return new Date(x.getTime() - x.getTimezoneOffset() * 60000).toISOString().split('T')[0]; };
 
@@ -139,7 +137,6 @@ async function cargarAlumnos() {
     const val = document.getElementById('grupo-select').value;
     if(!val) return;
     const [grupo, materia] = val.split('|');
-    
     let url = `${API_URL}/estudiantes?grupo=${grupo}`;
     if(materia !== undefined) url += `&materia=${materia}`;
     
@@ -171,7 +168,6 @@ function toggleReporte(id) {
 async function enviarReporte(estudianteId, estudianteNombre) {
     const motivo = document.getElementById(`motivo_${estudianteId}`).value;
     if(!motivo) return alert("Escribe el motivo del reporte");
-    
     const [grupo] = document.getElementById('grupo-select').value.split('|');
     await fetch(`${API_URL}/reportar`, { method: 'POST', body: JSON.stringify({ fecha: document.getElementById('fecha').value, estudiante: estudianteNombre, grupo: grupo, profesor: currentUser.nombre, motivo: motivo }) });
     alert("Reporte enviado a Prefectura.");
@@ -206,7 +202,6 @@ function actualizarMaterias(origen) {
         document.getElementById(`materias-container-${origen}`).style.display = 'none';
         return;
     }
-
     btn.style.display = 'inline-block';
     let datos = isRep ? reportesCompleto : historialCompleto;
     let filtrados = datos;
@@ -233,7 +228,6 @@ function aplicarFiltrosHistorial() {
     const materia = document.getElementById('filtro-materia').value.toLowerCase();
     const estudiante = document.getElementById('filtro-estudiante').value.toLowerCase().trim();
     const fechas = obtenerFechasFiltro('historial');
-    
     const checkboxes = document.querySelectorAll('.chk-materia-historial:checked');
     const materiasSeleccionadas = Array.from(checkboxes).map(c => c.value.toLowerCase());
     const isMateriasVisible = document.getElementById('materias-container-historial').style.display === 'block';
@@ -243,13 +237,9 @@ function aplicarFiltrosHistorial() {
         const matchEstudiante = estudiante === '' || r.nombre.toLowerCase().includes(estudiante);
         let matchFecha = true;
         if (fechas.inicio && fechas.fin) matchFecha = r.fecha >= fechas.inicio && r.fecha <= fechas.fin;
-        
         let matchMateria = true;
-        if (isMateriasVisible) {
-            matchMateria = r.materia && materiasSeleccionadas.includes(r.materia.toLowerCase());
-        } else {
-            matchMateria = materia === '' || (r.materia && r.materia.toLowerCase().includes(materia));
-        }
+        if (isMateriasVisible) matchMateria = r.materia && materiasSeleccionadas.includes(r.materia.toLowerCase());
+        else matchMateria = materia === '' || (r.materia && r.materia.toLowerCase().includes(materia));
 
         return matchGrupo && matchMateria && matchEstudiante && matchFecha;
     });
@@ -286,7 +276,6 @@ function aplicarFiltrosReportes() {
     const materia = document.getElementById('filtro-materia-rep').value.toLowerCase();
     const estudiante = document.getElementById('filtro-estudiante-rep').value.toLowerCase().trim();
     const fechas = obtenerFechasFiltro('reportes');
-
     const checkboxes = document.querySelectorAll('.chk-materia-reportes:checked');
     const materiasSeleccionadas = Array.from(checkboxes).map(c => c.value.toLowerCase());
     const isMateriasVisible = document.getElementById('materias-container-reportes').style.display === 'block';
@@ -296,13 +285,9 @@ function aplicarFiltrosReportes() {
         const matchEstudiante = estudiante === '' || r.estudiante_nombre.toLowerCase().includes(estudiante);
         let matchFecha = true;
         if (fechas.inicio && fechas.fin) matchFecha = r.fecha >= fechas.inicio && r.fecha <= fechas.fin;
-        
         let matchMateria = true;
-        if (isMateriasVisible) {
-            matchMateria = r.materia && materiasSeleccionadas.includes(r.materia.toLowerCase());
-        } else {
-            matchMateria = materia === '' || (r.materia && r.materia.toLowerCase().includes(materia));
-        }
+        if (isMateriasVisible) matchMateria = r.materia && materiasSeleccionadas.includes(r.materia.toLowerCase());
+        else matchMateria = materia === '' || (r.materia && r.materia.toLowerCase().includes(materia));
 
         return matchGrupo && matchMateria && matchEstudiante && matchFecha;
     });
@@ -345,73 +330,64 @@ async function asignarMateriaAGrupo() {
     configurarAccesos();
 }
 
-async function actualizarGrupoMasivo() {
-    const grupo_actual = document.getElementById('admin-masivo-grupo-select').value;
-    const nuevo_grupo = document.getElementById('admin-masivo-nuevo-grupo').value;
-    const nueva_materia = document.getElementById('admin-masivo-materia').value;
-    if(!grupo_actual || !nuevo_grupo) return alert('Selecciona el grupo y escribe el nuevo nombre.');
-    if(confirm(`⚠️ Cambiar a todos los de "${grupo_actual}" a "${nuevo_grupo}"?`)) {
-        await fetch(`${API_URL}/admin/grupo-masivo`, { method: 'PUT', body: JSON.stringify({ grupo_actual, nuevo_grupo, nueva_materia }) });
-        alert('✅ Actualización masiva completada.');
-        configurarAccesos();
-    }
-}
-
-async function eliminarGrupoEntero() {
-    const select = document.getElementById('admin-borrar-grupo-select');
-    const grupo = select ? select.value : null;
-    if(!grupo) return alert('Selecciona un grupo para borrar del menú desplegable.');
-
-    const confirmacion = prompt(`⚠️ PELIGRO: Vas a borrar TODO el grupo "${grupo}" y sus materias asociadas.\n\nEscribe el nombre del grupo exactamente para confirmar:`);
-    
-    if (confirmacion !== null) {
-        if (confirmacion.trim() === grupo.trim()) {
-            try {
-                // AQUÍ ESTÁ EL FIX: Usar POST y Headers correctos para que no bloquee
-                const response = await fetch(`${API_URL}/admin/borrar-grupo`, { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ grupo }) 
-                });
-                if(response.ok) {
-                    alert(`✅ El grupo "${grupo}" ha sido destruido por completo.`);
-                    configurarAccesos();
-                } else {
-                    alert('Hubo un error al intentar borrar el grupo en el servidor.');
-                }
-            } catch (err) {
-                alert('Error de conexión: ' + err.message);
-            }
-        } else {
-            alert(`❌ Eliminación cancelada: Escribiste "${confirmacion}", que no coincide con "${grupo}".`);
-        }
-    }
-}
-
+/* --- EDICIÓN DE GRUPOS Y MODALIDADES --- */
 async function cargarEstudiantesAdmin() {
     const grupo = document.getElementById('admin-grupo-select').value;
-    if(!grupo) return;
+    const bulkDiv = document.getElementById('admin-bulk-actions');
+    if(!grupo) {
+        bulkDiv.style.display = 'none';
+        document.getElementById('admin-lista-estudiantes').innerHTML = '';
+        return;
+    }
     const res = await fetch(`${API_URL}/estudiantes?grupo=${grupo}`);
     const estudiantes = await res.json();
+    
+    estudiantesEditando = estudiantes.map(e => e.id);
+    bulkDiv.style.display = estudiantes.length > 0 ? 'block' : 'none';
+
+    // UI Mejorada: Modalidad resaltada con fondo verde y borde
     document.getElementById('admin-lista-estudiantes').innerHTML = estudiantes.map(e => `
-        <div style="background:#fff; padding:10px; border-radius:8px; margin-bottom:5px; border:1px solid #ccc;">
-            <div style="display:flex; gap:5px; margin-bottom:5px;">
-                <input type="text" id="edit_nom_${e.id}" value="${e.nombre}" style="flex:2;" placeholder="Nombre">
-                <input type="text" id="edit_gpo_${e.id}" value="${e.grupo}" style="flex:1;" placeholder="Grupo">
-                <input type="text" id="edit_mat_${e.id}" value="${e.materia || ''}" style="flex:1;" placeholder="Materia">
-            </div>
-            <div style="display:flex; gap:5px;">
-                <select id="edit_mod_${e.id}" style="flex:2;">
+        <div style="background:#fff; padding:15px; border-radius:8px; margin-bottom:10px; border:1px solid #ccc; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+            <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
+                <input type="text" id="edit_nom_${e.id}" value="${e.nombre}" style="flex:2; margin:0; font-weight:bold;" placeholder="Nombre">
+                <select id="edit_mod_${e.id}" style="flex:1; margin:0; border:2px solid var(--gr); background:#eafaf1; font-weight:bold; color:var(--gr);">
                     <option value="Ad lucem" ${e.modalidad==='Ad lucem'?'selected':''}>Ad lucem</option>
                     <option value="360" ${e.modalidad==='360'?'selected':''}>360</option>
-                    <option value="Multicultural ingles" ${e.modalidad==='Multicultural ingles'?'selected':''}>Multicultural inglés</option>
-                    <option value="Multicultural frances" ${e.modalidad==='Multicultural frances'?'selected':''}>Multicultural francés</option>
+                    <option value="Multicultural ingles" ${e.modalidad==='Multicultural ingles'?'selected':''}>Multi. Inglés</option>
+                    <option value="Multicultural frances" ${e.modalidad==='Multicultural frances'?'selected':''}>Multi. Francés</option>
                 </select>
-                <button class="btn" style="background:#FFC107; color:#000;" onclick="editarEstudiante(${e.id})">💾</button>
-                <button class="btn" style="background:#D32F2F;" onclick="eliminarEstudiante(${e.id})">🗑️</button>
+            </div>
+            <div style="display:flex; gap:10px;">
+                <input type="text" id="edit_gpo_${e.id}" value="${e.grupo}" style="flex:1; margin:0;" placeholder="Grupo">
+                <input type="text" id="edit_mat_${e.id}" value="${e.materia || ''}" style="flex:1; margin:0;" placeholder="Materia">
+                <button class="btn" style="background:#FFC107; color:#000; padding:10px;" onclick="editarEstudiante(${e.id})" title="Guardar individualmente">💾</button>
+                <button class="btn" style="background:#D32F2F; padding:10px;" onclick="eliminarEstudiante(${e.id})" title="Eliminar alumno">🗑️</button>
             </div>
         </div>
     `).join('');
+}
+
+async function guardarCambiosGrupo() {
+    if(!estudiantesEditando || estudiantesEditando.length === 0) return;
+    const btn = document.getElementById('btn-guardar-grupo');
+    btn.innerText = '⏳ Guardando...';
+    
+    const payload = estudiantesEditando.map(id => ({
+        id: id,
+        nombre: document.getElementById(`edit_nom_${id}`).value,
+        grupo: document.getElementById(`edit_gpo_${id}`).value,
+        materia: document.getElementById(`edit_mat_${id}`).value,
+        modalidad: document.getElementById(`edit_mod_${id}`).value
+    }));
+
+    await fetch(`${API_URL}/admin/estudiantes-batch`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+    });
+    
+    btn.innerText = '💾 Guardar Todos los Cambios del Grupo';
+    alert('✅ ¡Se han guardado las modalidades y datos de todos los alumnos del grupo!');
+    cargarEstudiantesAdmin(); // recargar
 }
 
 async function editarEstudiante(id) {
@@ -424,6 +400,17 @@ async function eliminarEstudiante(id) {
     if(!confirm('¿Eliminar?')) return;
     await fetch(`${API_URL}/admin/estudiante`, { method: 'DELETE', body: JSON.stringify({ id }) });
     cargarEstudiantesAdmin();
+}
+
+async function eliminarGrupoEntero() {
+    const select = document.getElementById('admin-borrar-grupo-select');
+    const grupo = select ? select.value : null;
+    if(!grupo) return alert('Selecciona un grupo.');
+    const confirmacion = prompt(`Escribe el nombre del grupo para confirmar (${grupo}):`);
+    if (confirmacion !== null && confirmacion.trim() === grupo.trim()) {
+        await fetch(`${API_URL}/admin/borrar-grupo`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ grupo: grupo.trim() }) });
+        alert(`✅ Destruido.`); configurarAccesos();
+    }
 }
 
 async function cargarProfesoresAdmin() {

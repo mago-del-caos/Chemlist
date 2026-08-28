@@ -36,7 +36,7 @@
         .admin-panel-section { background: var(--bg); padding: 15px; border-radius: var(--rd); margin-bottom: 20px; border: 1px solid #ddd; }
         .modalidad-tag { font-size: 0.75rem; background: #ddd; padding: 2px 6px; border-radius: 5px; margin-left: 5px; }
         .filtros-container { display: flex; gap: 10px; flex-wrap: wrap; background: var(--bg); padding: 15px; border-radius: var(--rd); margin-bottom: 15px; border: 1px solid #ddd; align-items: center; }
-        .filtros-container > * { flex: 1; min-width: 150px; margin-bottom: 0; }
+        .filtros-container > * { flex: 1; min-width: 140px; margin-bottom: 0; }
     </style>
 </head>
 <body>
@@ -63,33 +63,41 @@
         </div>
 
         <div id="lista" class="tab-content active">
-            <select id="grupo-select"></select>
+            <select id="grupo-select"><option value="">Cargando clases...</option></select>
             <input type="date" id="fecha">
             <div id="estudiantes"></div>
             <button class="btn btn-save" onclick="guardarAsistencia()">Guardar Asistencia</button>
         </div>
 
+        <!-- PESTAÑA ASISTENCIAS CON FILTROS COMPLETOS -->
         <div id="historial" class="tab-content">
             <h3 style="margin-bottom:10px; color:var(--nav);">Filtros de Asistencia</h3>
             <div class="filtros-container">
                 <select id="filtro-grupo"><option value="">Todos los grupos</option></select>
-                <input type="text" id="filtro-estudiante" placeholder="Buscar alumno (ej. Juan)...">
-                <div style="display:flex; flex-direction:column; min-width: 120px;">
-                    <label style="font-size:0.75rem; font-weight:bold;">Del:</label>
-                    <input type="date" id="filtro-fecha-inicio">
+                <select id="filtro-materia"><option value="">Todas las materias</option></select>
+                <input type="text" id="filtro-estudiante" placeholder="Alumno (ej. Juan)...">
+                
+                <select id="filtro-tiempo" onchange="cambiarModoTiempo('historial')">
+                    <option value="todo">Todo el ciclo</option>
+                    <option value="dia">Hoy</option>
+                    <option value="semana">Esta semana</option>
+                    <option value="mes">Este mes</option>
+                    <option value="custom">Fechas específicas...</option>
+                </select>
+                
+                <div id="fechas-custom-historial" style="display:none; gap:5px; flex-wrap:wrap; width:100%;">
+                    <div style="display:flex; flex-direction:column; flex:1;">
+                        <label style="font-size:0.75rem; font-weight:bold;">Del:</label>
+                        <input type="date" id="filtro-fecha-inicio">
+                    </div>
+                    <div style="display:flex; flex-direction:column; flex:1;">
+                        <label style="font-size:0.75rem; font-weight:bold;">Al:</label>
+                        <input type="date" id="filtro-fecha-fin">
+                    </div>
                 </div>
-                <div style="display:flex; flex-direction:column; min-width: 120px;">
-                    <label style="font-size:0.75rem; font-weight:bold;">Al:</label>
-                    <input type="date" id="filtro-fecha-fin">
-                </div>
-                <button class="btn" id="btn-materias-historial" onclick="toggleMaterias('historial')" style="display:none; background:#007BFF; height:100%;">📚 Materias</button>
+
                 <button class="btn" style="background:var(--nav); height:100%;" onclick="aplicarFiltrosHistorial()">🔍 Filtrar</button>
                 <button class="btn" style="background:#D32F2F; height:100%;" onclick="imprimirPDF()">📄 PDF</button>
-            </div>
-            
-            <div id="materias-container-historial" style="display:none; background:#e9ecef; padding:15px; border-radius:var(--rd); margin-bottom:15px;">
-                <strong>Selecciona las materias a incluir en el reporte:</strong>
-                <div id="lista-materias-historial" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;"></div>
             </div>
             
             <div id="area-impresion" style="overflow-x:auto; background:#FFF; padding:10px;">
@@ -98,27 +106,35 @@
             </div>
         </div>
 
+        <!-- PESTAÑA REPORTES CON FILTROS COMPLETOS -->
         <div id="reportes" class="tab-content">
             <h3 style="margin-bottom:10px; color:var(--nav);">Filtros de Incidentes</h3>
             <div class="filtros-container">
                 <select id="filtro-grupo-rep"><option value="">Todos los grupos</option></select>
-                <input type="text" id="filtro-estudiante-rep" placeholder="Buscar alumno (ej. Juan)...">
-                <div style="display:flex; flex-direction:column; min-width: 120px;">
-                    <label style="font-size:0.75rem; font-weight:bold;">Del:</label>
-                    <input type="date" id="filtro-fecha-inicio-rep">
+                <select id="filtro-materia-rep"><option value="">Todas las materias</option></select>
+                <input type="text" id="filtro-estudiante-rep" placeholder="Alumno (ej. Juan)...">
+                
+                <select id="filtro-tiempo-rep" onchange="cambiarModoTiempo('reportes')">
+                    <option value="todo">Todo el ciclo</option>
+                    <option value="dia">Hoy</option>
+                    <option value="semana">Esta semana</option>
+                    <option value="mes">Este mes</option>
+                    <option value="custom">Fechas específicas...</option>
+                </select>
+
+                <div id="fechas-custom-reportes" style="display:none; gap:5px; flex-wrap:wrap; width:100%;">
+                    <div style="display:flex; flex-direction:column; flex:1;">
+                        <label style="font-size:0.75rem; font-weight:bold;">Del:</label>
+                        <input type="date" id="filtro-fecha-inicio-rep">
+                    </div>
+                    <div style="display:flex; flex-direction:column; flex:1;">
+                        <label style="font-size:0.75rem; font-weight:bold;">Al:</label>
+                        <input type="date" id="filtro-fecha-fin-rep">
+                    </div>
                 </div>
-                <div style="display:flex; flex-direction:column; min-width: 120px;">
-                    <label style="font-size:0.75rem; font-weight:bold;">Al:</label>
-                    <input type="date" id="filtro-fecha-fin-rep">
-                </div>
-                <button class="btn" id="btn-materias-reportes" onclick="toggleMaterias('reportes')" style="display:none; background:#007BFF; height:100%;">📚 Materias</button>
+
                 <button class="btn" style="background:var(--nav); height:100%;" onclick="aplicarFiltrosReportes()">🔍 Filtrar</button>
                 <button class="btn" style="background:#D32F2F; height:100%;" onclick="imprimirPDFReportes()">📄 PDF</button>
-            </div>
-            
-            <div id="materias-container-reportes" style="display:none; background:#e9ecef; padding:15px; border-radius:var(--rd); margin-bottom:15px;">
-                <strong>Selecciona las materias a incluir en el reporte:</strong>
-                <div id="lista-materias-reportes" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;"></div>
             </div>
             
             <div id="area-impresion-reportes" style="overflow-x:auto; background:#FFF; padding:10px;">
@@ -130,6 +146,7 @@
         <div id="admin-panel" class="tab-content">
             <h3 style="margin-bottom:15px; color:var(--nav);">Control Maestro</h3>
             
+            <!-- (Contenido intacto del admin panel) -->
             <div class="admin-panel-section">
                 <h4>👨‍🏫 Gestión de Personal</h4>
                 <div style="display:flex; gap:5px; margin-bottom:10px;">
@@ -150,12 +167,9 @@
                 <div id="admin-lista-profesores"></div>
             </div>
 
-            <!-- SECCIÓN NUEVA: ALTA MASIVA -->
             <div class="admin-panel-section" style="border-left: 5px solid var(--gr);">
-                <h4 style="color:var(--gr);">➕ Alta de Grupo Completo (Lista de Alumnos)</h4>
-                <p style="font-size:0.8rem; margin-bottom:10px;">Pega tu lista de estudiantes de Excel o Word. Cada línea se guardará como un estudiante distinto dentro del mismo grupo.</p>
-                <textarea id="nuevo-nombres-masivo" rows="6" placeholder="Juan Pérez López&#10;María Fernanda García&#10;Carlos Slim..."></textarea>
-                
+                <h4 style="color:var(--gr);">➕ Alta de Grupo Completo</h4>
+                <textarea id="nuevo-nombres-masivo" rows="6" placeholder="Juan Pérez López&#10;María Fernanda García..."></textarea>
                 <div style="display:flex; gap:5px; margin-bottom:5px;">
                     <input type="text" id="nuevo-grupo" placeholder="Grupo (ej. 6A)" style="flex:1;">
                     <input type="text" id="nuevo-materia" placeholder="Materia (ej. Matemáticas)" style="flex:1;">
@@ -180,15 +194,6 @@
             </div>
 
             <div class="admin-panel-section">
-                <h4>📋 Clonar Lista de Grupo Existente</h4>
-                <div style="display:flex; gap:5px;">
-                    <input type="text" id="grupo-origen" placeholder="De: 6A">
-                    <input type="text" id="grupo-destino" placeholder="A: TALLER6A">
-                    <button class="btn" style="background:var(--yw); color:#000;" onclick="copiarLista()">Clonar</button>
-                </div>
-            </div>
-
-            <div class="admin-panel-section">
                 <h4>✏️ Editar o Eliminar Alumnos (Individual)</h4>
                 <select id="admin-grupo-select" onchange="cargarEstudiantesAdmin()"><option value="">Selecciona grupo...</option></select>
                 <div id="admin-lista-estudiantes" style="margin-top:15px;"></div>
@@ -203,7 +208,7 @@
             </div>
         </div>
     </div>
-    <script src="app.js?v=17"></script>
+    <script src="app.js?v=18"></script>
     <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }</script>
 </body>
 </html>

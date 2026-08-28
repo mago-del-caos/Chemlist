@@ -69,7 +69,6 @@
             <button class="btn btn-save" onclick="guardarAsistencia()">Guardar Asistencia</button>
         </div>
 
-        <!-- PESTAÑA ASISTENCIAS CON FILTROS COMPLETOS -->
         <div id="historial" class="tab-content">
             <h3 style="margin-bottom:10px; color:var(--nav);">Filtros de Asistencia</h3>
             <div class="filtros-container">
@@ -96,8 +95,14 @@
                     </div>
                 </div>
 
+                <button class="btn" id="btn-materias-historial" onclick="toggleMaterias('historial')" style="display:none; background:#007BFF; height:100%;">📚 Materias</button>
                 <button class="btn" style="background:var(--nav); height:100%;" onclick="aplicarFiltrosHistorial()">🔍 Filtrar</button>
                 <button class="btn" style="background:#D32F2F; height:100%;" onclick="imprimirPDF()">📄 PDF</button>
+            </div>
+            
+            <div id="materias-container-historial" style="display:none; background:#e9ecef; padding:15px; border-radius:var(--rd); margin-bottom:15px;">
+                <strong>Selecciona las materias a incluir en el reporte:</strong>
+                <div id="lista-materias-historial" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;"></div>
             </div>
             
             <div id="area-impresion" style="overflow-x:auto; background:#FFF; padding:10px;">
@@ -106,7 +111,6 @@
             </div>
         </div>
 
-        <!-- PESTAÑA REPORTES CON FILTROS COMPLETOS -->
         <div id="reportes" class="tab-content">
             <h3 style="margin-bottom:10px; color:var(--nav);">Filtros de Incidentes</h3>
             <div class="filtros-container">
@@ -133,8 +137,14 @@
                     </div>
                 </div>
 
+                <button class="btn" id="btn-materias-reportes" onclick="toggleMaterias('reportes')" style="display:none; background:#007BFF; height:100%;">📚 Materias</button>
                 <button class="btn" style="background:var(--nav); height:100%;" onclick="aplicarFiltrosReportes()">🔍 Filtrar</button>
                 <button class="btn" style="background:#D32F2F; height:100%;" onclick="imprimirPDFReportes()">📄 PDF</button>
+            </div>
+            
+            <div id="materias-container-reportes" style="display:none; background:#e9ecef; padding:15px; border-radius:var(--rd); margin-bottom:15px;">
+                <strong>Selecciona las materias a incluir en el reporte:</strong>
+                <div id="lista-materias-reportes" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;"></div>
             </div>
             
             <div id="area-impresion-reportes" style="overflow-x:auto; background:#FFF; padding:10px;">
@@ -146,9 +156,9 @@
         <div id="admin-panel" class="tab-content">
             <h3 style="margin-bottom:15px; color:var(--nav);">Control Maestro</h3>
             
-            <!-- (Contenido intacto del admin panel) -->
             <div class="admin-panel-section">
                 <h4>👨‍🏫 Gestión de Personal</h4>
+                <p style="font-size:0.8rem; margin-bottom:10px;">Asigna permisos exactos usando la barra vertical. Ej: <b style="color:var(--nav);">6A</b> (ve todo el 6A) o <b style="color:#D32F2F;">6A|Física</b> (solo ve esa clase).</p>
                 <div style="display:flex; gap:5px; margin-bottom:10px;">
                     <input type="text" id="nuevo-prof-user" placeholder="Usuario" style="flex:1;">
                     <input type="text" id="nuevo-prof-pass" placeholder="Clave" style="flex:1;">
@@ -160,19 +170,31 @@
                         <option value="prefecto">Prefecto</option>
                         <option value="admin">Administrador</option>
                     </select>
-                    <input type="text" id="nuevo-prof-grupos" placeholder="Grupos (ej. 4A,4B o ALL)" style="flex:2;">
+                    <input type="text" id="nuevo-prof-grupos" placeholder="Permisos (ej. 6A|Física,4B)" style="flex:2;">
                     <button class="btn" style="background:var(--nav);" onclick="agregarProfesor()">Añadir Personal</button>
                 </div>
                 <button class="btn" onclick="cargarProfesoresAdmin()" style="width:100%; background:#777; margin-bottom:10px;">Cargar Lista de Personal</button>
                 <div id="admin-lista-profesores"></div>
             </div>
 
+            <!-- SECCIÓN NUEVA: ASIGNAR MATERIAS A GRUPOS (CLONADOR INTELIGENTE) -->
+            <div class="admin-panel-section" style="border-left: 5px solid #8E44AD;">
+                <h4 style="color:#8E44AD;">📘 Asignar Materia a un Grupo (Crear Clase)</h4>
+                <p style="font-size:0.8rem; margin-bottom:10px;">Toma a todos los alumnos de un grupo base y les asigna una nueva materia para que los profesores puedan pasarles lista.</p>
+                <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                    <select id="materia-grupo-origen" style="flex:1; min-width:150px;"><option value="">Selecciona grupo base...</option></select>
+                    <input type="text" id="materia-nueva" placeholder="Nueva Materia (ej. Biología)" style="flex:1; min-width:150px;">
+                    <button class="btn" style="background:#8E44AD; color:#FFF; flex:1; min-width:150px;" onclick="asignarMateriaAGrupo()">Crear Clase</button>
+                </div>
+            </div>
+
             <div class="admin-panel-section" style="border-left: 5px solid var(--gr);">
-                <h4 style="color:var(--gr);">➕ Alta de Grupo Completo</h4>
+                <h4 style="color:var(--gr);">➕ Alta de Grupo Base (Lista desde Excel/Word)</h4>
+                <p style="font-size:0.8rem; margin-bottom:10px;">Pega tu lista de estudiantes. Cada línea se guardará como un estudiante distinto.</p>
                 <textarea id="nuevo-nombres-masivo" rows="6" placeholder="Juan Pérez López&#10;María Fernanda García..."></textarea>
                 <div style="display:flex; gap:5px; margin-bottom:5px;">
                     <input type="text" id="nuevo-grupo" placeholder="Grupo (ej. 6A)" style="flex:1;">
-                    <input type="text" id="nuevo-materia" placeholder="Materia (ej. Matemáticas)" style="flex:1;">
+                    <input type="text" id="nuevo-materia" placeholder="Materia Inicial (Opcional)" style="flex:1;">
                 </div>
                 <select id="nuevo-modalidad">
                     <option value="Ad lucem">Ad lucem</option>
@@ -180,15 +202,15 @@
                     <option value="Multicultural ingles">Multicultural inglés</option>
                     <option value="Multicultural frances">Multicultural francés</option>
                 </select>
-                <button class="btn" style="background:var(--gr); width:100%; font-size:1.1rem; padding:12px;" onclick="agregarGrupoCompleto()">Crear Grupo Completo</button>
+                <button class="btn" style="background:var(--gr); width:100%; font-size:1.1rem; padding:12px;" onclick="agregarGrupoCompleto()">Crear Grupo Base</button>
             </div>
 
             <div class="admin-panel-section" style="border-left: 5px solid #007BFF;">
-                <h4 style="color:#007BFF;">🔄 Migración y Edición Masiva</h4>
+                <h4 style="color:#007BFF;">🔄 Corrección Masiva</h4>
                 <div style="display:flex; gap:5px; flex-wrap:wrap;">
                     <select id="admin-masivo-grupo-select" style="flex:1; min-width:150px;"><option value="">Selecciona grupo...</option></select>
-                    <input type="text" id="admin-masivo-nuevo-grupo" placeholder="Nuevo Grupo" style="flex:1; min-width:150px;">
-                    <input type="text" id="admin-masivo-materia" placeholder="Materia" style="flex:1; min-width:150px;">
+                    <input type="text" id="admin-masivo-nuevo-grupo" placeholder="Cambiar a Grupo..." style="flex:1; min-width:150px;">
+                    <input type="text" id="admin-masivo-materia" placeholder="Cambiar a Materia..." style="flex:1; min-width:150px;">
                     <button class="btn" style="background:#007BFF; flex:1; min-width:150px;" onclick="actualizarGrupoMasivo()">Aplicar a todos</button>
                 </div>
             </div>
@@ -208,7 +230,7 @@
             </div>
         </div>
     </div>
-    <script src="app.js?v=18"></script>
+    <script src="app.js?v=19"></script>
     <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }</script>
 </body>
 </html>

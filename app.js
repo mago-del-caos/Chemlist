@@ -80,26 +80,18 @@ function showTab(tabId, btn) {
     btn.classList.add('active');
 }
 
-/* --- NUEVAS FUNCIONES DE ACCESO RÁPIDO A REPORTES --- */
 function verReporteEstudiante(nombre, origen) {
     const isRep = origen === 'reportes';
     const suffix = isRep ? '-rep' : '';
-    
-    // Rellenamos el filtro de texto y limpiamos el de grupo
     document.getElementById(`filtro-estudiante${suffix}`).value = nombre;
     document.getElementById(`filtro-grupo${suffix}`).value = '';
-    
-    // Actualizamos materias y aplicamos filtro
     actualizarMaterias(origen);
     if (isRep) aplicarFiltrosReportes();
     else aplicarFiltrosHistorial();
-    
-    // Subimos la pantalla hacia los filtros para que sea evidente
     document.getElementById(`filtro-estudiante${suffix}`).scrollIntoView({behavior: 'smooth', block: 'center'});
 }
 
 function verReporteEstudianteDesdeLista(nombre) {
-    // Si dan clic en el pase de lista, los llevamos a la pestaña Historial automáticamente
     const btnHistorial = document.getElementById('btn-historial');
     showTab('historial', btnHistorial);
     verReporteEstudiante(nombre, 'historial');
@@ -111,7 +103,6 @@ async function cargarAlumnos() {
     const res = await fetch(`${API_URL}/estudiantes?grupo=${grupo}`);
     alumnosGrupo = await res.json();
     
-    // El nombre ahora es un enlace interactivo
     document.getElementById('estudiantes').innerHTML = alumnosGrupo.map(a => `
         <div class="student-row">
             <strong><a href="#" onclick="verReporteEstudianteDesdeLista('${a.nombre}'); return false;" style="color:var(--nav); text-decoration:none; border-bottom:1px dashed var(--nav); cursor:pointer;">${a.nombre}</a></strong> <span class="modalidad-tag">${a.modalidad || 'Ad lucem'}</span><br><br>
@@ -228,7 +219,6 @@ function aplicarFiltrosHistorial() {
 }
 
 function renderizarTablaHistorial(datos) {
-    // El nombre ahora es interactivo en la tabla
     document.getElementById('tabla-historial').innerHTML = datos.map(r => {
         let color = r.estado === 'Presente' ? 'var(--gr)' : r.estado === 'Falta' ? '#D32F2F' : '#007BFF';
         return `<tr><td>${r.fecha}</td><td><strong>${r.grupo}</strong></td><td><a href="#" onclick="verReporteEstudiante('${r.nombre}', 'historial'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.nombre}</a></td><td style="color:${color}; font-weight:bold;">${r.estado}</td></tr>`;
@@ -280,7 +270,6 @@ function aplicarFiltrosReportes() {
 }
 
 function renderizarTablaReportes(datos) {
-    // El nombre ahora es interactivo en la tabla
     document.getElementById('tabla-reportes').innerHTML = datos.map(r => `<tr><td>${r.fecha}</td><td><b>${r.grupo}</b></td><td><a href="#" onclick="verReporteEstudiante('${r.estudiante_nombre}', 'reportes'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.estudiante_nombre}</a></td><td>${r.motivo}</td><td><i>${r.profesor_nombre}</i></td></tr>`).join('');
 }
 
@@ -366,25 +355,37 @@ async function eliminarEstudiante(id) {
     cargarEstudiantesAdmin();
 }
 
+/* --- FUNCIÓN MEJORADA: CARGAR PROFESORES ADMIN --- */
 async function cargarProfesoresAdmin() {
     const res = await fetch(`${API_URL}/admin/profesores`);
     const profes = await res.json();
+    
+    // Aquí añadimos indicadores visuales claros (Usuario y Contraseña) y resaltamos la clave.
     document.getElementById('admin-lista-profesores').innerHTML = profes.map(p => `
-        <div style="background:#fff; padding:10px; border-radius:8px; margin-bottom:5px; border:1px solid #ccc;">
-            <div style="display:flex; gap:5px; margin-bottom:5px;">
-                <input type="text" id="edit_prof_user_${p.id}" value="${p.username}" style="flex:1;">
-                <input type="text" id="edit_prof_pass_${p.id}" value="${p.password}" style="flex:1;">
-                <input type="text" id="edit_prof_nom_${p.id}" value="${p.nombre}" style="flex:2;">
+        <div style="background:#fff; padding:15px; border-radius:8px; margin-bottom:10px; border:1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
+                <div style="flex:1;">
+                    <label style="font-size:0.75rem; font-weight:bold; color:var(--nav);">👤 Usuario:</label>
+                    <input type="text" id="edit_prof_user_${p.id}" value="${p.username}" style="margin:0;">
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:0.75rem; font-weight:bold; color:#D32F2F;">🔑 Contraseña:</label>
+                    <input type="text" id="edit_prof_pass_${p.id}" value="${p.password}" style="margin:0; border-color:#FFC107; background:#fffdf5;">
+                </div>
+                <div style="flex:2;">
+                    <label style="font-size:0.75rem; font-weight:bold; color:var(--nav);">Nombre Real:</label>
+                    <input type="text" id="edit_prof_nom_${p.id}" value="${p.nombre}" style="margin:0;">
+                </div>
             </div>
-            <div style="display:flex; gap:5px;">
-                <select id="edit_prof_rol_${p.id}" style="flex:1;">
+            <div style="display:flex; gap:10px; align-items:center;">
+                <select id="edit_prof_rol_${p.id}" style="flex:1; margin:0;">
                     <option value="profesor" ${p.rol==='profesor'?'selected':''}>Profesor</option>
                     <option value="prefecto" ${p.rol==='prefecto'?'selected':''}>Prefecto</option>
                     <option value="admin" ${p.rol==='admin'?'selected':''}>Admin</option>
                 </select>
-                <input type="text" id="edit_prof_grupos_${p.id}" value="${p.grupos}" style="flex:2;">
-                <button class="btn" style="background:#FFC107; color:#000;" onclick="editarProfesor(${p.id})">💾</button>
-                <button class="btn" style="background:#D32F2F;" onclick="eliminarProfesor(${p.id})">🗑️</button>
+                <input type="text" id="edit_prof_grupos_${p.id}" value="${p.grupos}" placeholder="Grupos permitidos" style="flex:2; margin:0;">
+                <button class="btn" style="background:#FFC107; color:#000; font-weight:bold; padding:10px;" onclick="editarProfesor(${p.id})">💾 Guardar Cambios</button>
+                <button class="btn" style="background:#D32F2F; padding:10px;" onclick="eliminarProfesor(${p.id})">🗑️</button>
             </div>
         </div>
     `).join('');
@@ -409,7 +410,7 @@ async function editarProfesor(id) {
     const rol = document.getElementById(`edit_prof_rol_${id}`).value;
     const grupos = document.getElementById(`edit_prof_grupos_${id}`).value;
     await fetch(`${API_URL}/admin/profesor`, { method: 'PUT', body: JSON.stringify({ id, username, password, nombre, rol, grupos }) });
-    alert('Personal actualizado.');
+    alert('¡Datos y contraseña actualizados correctamente!');
     cargarProfesoresAdmin();
 }
 

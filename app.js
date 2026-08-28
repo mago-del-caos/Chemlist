@@ -11,6 +11,11 @@ document.getElementById('filtro-estudiante').addEventListener('input', () => act
 document.getElementById('filtro-grupo-rep').addEventListener('change', () => actualizarMaterias('reportes'));
 document.getElementById('filtro-estudiante-rep').addEventListener('input', () => actualizarMaterias('reportes'));
 
+// Pre-llenar el grupo al usar la edición masiva para hacerle la vida fácil al Admin
+document.getElementById('admin-masivo-grupo-select')?.addEventListener('change', (e) => {
+    document.getElementById('admin-masivo-nuevo-grupo').value = e.target.value;
+});
+
 async function login() {
     const u = document.getElementById('username').value;
     const p = document.getElementById('password').value;
@@ -33,6 +38,7 @@ async function configurarAccesos() {
     const select = document.getElementById('grupo-select');
     const adminSelect = document.getElementById('admin-grupo-select');
     const borrarSelect = document.getElementById('admin-borrar-grupo-select');
+    const masivoSelect = document.getElementById('admin-masivo-grupo-select');
     const filtroGrupo = document.getElementById('filtro-grupo');
     const filtroGrupoRep = document.getElementById('filtro-grupo-rep');
     
@@ -51,13 +57,16 @@ async function configurarAccesos() {
     filtroGrupoRep.innerHTML = htmlFiltros;
 
     let htmlAdmin = '<option value="">Selecciona un grupo...</option>';
-    let htmlBorrar = '<option value="">Selecciona grupo a borrar...</option>';
+    let htmlBorrar = '<option value="">Selecciona grupo...</option>';
+    let htmlMasivo = '<option value="">Selecciona grupo actual...</option>';
     gruposDB.forEach(g => {
         htmlAdmin += `<option value="${g}">${g}</option>`;
         htmlBorrar += `<option value="${g}">${g}</option>`;
+        htmlMasivo += `<option value="${g}">${g}</option>`;
     });
     adminSelect.innerHTML = htmlAdmin;
     if (borrarSelect) borrarSelect.innerHTML = htmlBorrar;
+    if (masivoSelect) masivoSelect.innerHTML = htmlMasivo;
 
     if (currentUser.rol === 'admin' || currentUser.rol === 'prefecto' || currentUser.rol === 'profesor') {
         document.getElementById('btn-historial').style.display = 'block';
@@ -163,22 +172,13 @@ function actualizarMaterias(origen) {
     }
 
     btn.style.display = 'inline-block';
-    
     let datos = isRep ? reportesCompleto : historialCompleto;
     let filtrados = datos;
-    
-    if (estudiante) {
-        filtrados = filtrados.filter(r => (r.nombre || r.estudiante_nombre).toLowerCase().includes(estudiante));
-    } else if (grupo) {
-        filtrados = filtrados.filter(r => r.grupo === grupo);
-    }
+    if (estudiante) filtrados = filtrados.filter(r => (r.nombre || r.estudiante_nombre).toLowerCase().includes(estudiante));
+    else if (grupo) filtrados = filtrados.filter(r => r.grupo === grupo);
 
     let materias = [...new Set(filtrados.map(r => r.grupo))];
-    lista.innerHTML = materias.map(m => `
-        <label style="background:#FFF; padding:8px 12px; border-radius:20px; border:1px solid #ccc; cursor:pointer; font-size:0.85rem; font-weight:bold;">
-            <input type="checkbox" value="${m}" class="chk-materia-${origen}" checked> ${m}
-        </label>
-    `).join('');
+    lista.innerHTML = materias.map(m => `<label style="background:#FFF; padding:8px 12px; border-radius:20px; border:1px solid #ccc; cursor:pointer; font-size:0.85rem; font-weight:bold;"><input type="checkbox" value="${m}" class="chk-materia-${origen}" checked> ${m}</label>`).join('');
 }
 
 async function cargarHistorial() {
@@ -197,7 +197,6 @@ function aplicarFiltrosHistorial() {
     const estudiante = document.getElementById('filtro-estudiante').value.toLowerCase().trim();
     const fechaInicio = document.getElementById('filtro-fecha-inicio').value;
     const fechaFin = document.getElementById('filtro-fecha-fin').value;
-
     const checkboxes = document.querySelectorAll('.chk-materia-historial:checked');
     const materiasSeleccionadas = Array.from(checkboxes).map(c => c.value.toLowerCase());
     const isMateriasVisible = document.getElementById('materias-container-historial').style.display === 'block';
@@ -248,7 +247,6 @@ function aplicarFiltrosReportes() {
     const estudiante = document.getElementById('filtro-estudiante-rep').value.toLowerCase().trim();
     const fechaInicio = document.getElementById('filtro-fecha-inicio-rep').value;
     const fechaFin = document.getElementById('filtro-fecha-fin-rep').value;
-
     const checkboxes = document.querySelectorAll('.chk-materia-reportes:checked');
     const materiasSeleccionadas = Array.from(checkboxes).map(c => c.value.toLowerCase());
     const isMateriasVisible = document.getElementById('materias-container-reportes').style.display === 'block';
@@ -281,6 +279,26 @@ function imprimirPDFReportes() {
 }
 
 /* --- ADMIN --- */
+async function actualizarGrupoMasivo() {
+    const grupo_actual = document.getElementById('admin-masivo-grupo-select').value;
+    const nuevo_grupo = document.getElementById('admin-masivo-nuevo-grupo').value;
+    const nueva_materia = document.getElementById('admin-masivo-materia').value;
+
+    if(!grupo_actual) return alert('Selecciona el grupo que deseas modificar.');
+    if(!nuevo_grupo) return alert('El nuevo nombre del grupo no puede estar vacío.');
+
+    const txtMateria = nueva_materia ? `con la materia "${nueva_materia}"` : 'sin materia especificada';
+    const conf = confirm(`⚠️ ATENCIÓN: Vas a modificar a TODOS los alumnos del grupo "${grupo_actual}".\n\nPasarán a ser del grupo "${nuevo_grupo}" ${txtMateria}.\n\n¿Deseas continuar?`);
+    
+    if(conf) {
+        await fetch(`${API_URL}/admin/grupo-masivo`, { method: 'PUT', body: JSON.stringify({ grupo_actual, nuevo_grupo, nueva_materia }) });
+        alert('✅ ¡Todos los alumnos del grupo fueron actualizados!');
+        document.getElementById('admin-masivo-nuevo-grupo').value = '';
+        document.getElementById('admin-masivo-materia').value = '';
+        configurarAccesos();
+    }
+}
+
 async function agregarEstudiante() {
     const nombre = document.getElementById('nuevo-nombre').value;
     const grupo = document.getElementById('nuevo-grupo').value;

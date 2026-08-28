@@ -129,6 +129,7 @@
 
         <div id="admin-panel" class="tab-content">
             <h3 style="margin-bottom:15px; color:var(--nav);">Control Maestro</h3>
+            
             <div class="admin-panel-section">
                 <h4>👨‍🏫 Gestión de Personal</h4>
                 <div style="display:flex; gap:5px; margin-bottom:10px;">
@@ -147,6 +148,18 @@
                 </div>
                 <button class="btn" onclick="cargarProfesoresAdmin()" style="width:100%; background:#777; margin-bottom:10px;">Cargar Lista de Personal</button>
                 <div id="admin-lista-profesores"></div>
+            </div>
+
+            <!-- NUEVA SECCIÓN AZUL: EDICIÓN MASIVA -->
+            <div class="admin-panel-section" style="border-left: 5px solid #007BFF;">
+                <h4 style="color:#007BFF;">🔄 Migración y Edición Masiva</h4>
+                <p style="font-size:0.8rem; margin-bottom:10px;">Cambia el nombre o asigna una materia a todos los alumnos de un grupo a la vez.</p>
+                <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                    <select id="admin-masivo-grupo-select" style="flex:1; min-width:150px;"><option value="">Selecciona grupo...</option></select>
+                    <input type="text" id="admin-masivo-nuevo-grupo" placeholder="Nuevo Grupo (ej. MATE6A)" style="flex:1; min-width:150px;">
+                    <input type="text" id="admin-masivo-materia" placeholder="Materia (ej. Matemáticas)" style="flex:1; min-width:150px;">
+                    <button class="btn" style="background:#007BFF; flex:1; min-width:150px;" onclick="actualizarGrupoMasivo()">Aplicar a todos</button>
+                </div>
             </div>
 
             <div class="admin-panel-section">
@@ -175,13 +188,13 @@
             </div>
 
             <div class="admin-panel-section">
-                <h4>✏️ Editar o Eliminar Alumnos</h4>
+                <h4>✏️ Editar o Eliminar Alumnos (Individual)</h4>
                 <select id="admin-grupo-select" onchange="cargarEstudiantesAdmin()"><option value="">Selecciona grupo...</option></select>
                 <div id="admin-lista-estudiantes" style="margin-top:15px;"></div>
             </div>
             
             <div class="admin-panel-section" style="border-left: 5px solid #D32F2F;">
-                <h4 style="color:#D32F2F;">⚠️ Peligro: Destruir Grupo</h4>
+                <h4 style="color:#D32F2F;">⚠️ Peligro: Destruir Grupo Entero</h4>
                 <div style="display:flex; gap:5px;">
                     <select id="admin-borrar-grupo-select"><option value="">Selecciona grupo...</option></select>
                     <button class="btn" style="background:#D32F2F;" onclick="eliminarGrupoEntero()">Borrar Grupo</button>
@@ -189,7 +202,7 @@
             </div>
         </div>
     </div>
-    <script src="app.js?v=15"></script>
+    <script src="app.js?v=16"></script>
     <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }</script>
 </body>
 </html>

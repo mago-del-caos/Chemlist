@@ -16,7 +16,7 @@
         @media (min-width: 768px) { body { padding: 30px; } }
         .container { max-width: 900px; margin: 0 auto; background: #FFF; border-radius: var(--rd); overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); }
         .login-container { max-width: 400px; margin: 50px auto; padding: 30px; text-align: center; }
-        input[type="text"], input[type="password"], select, input[type="date"] { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: var(--rd); font-size: 0.95rem; }
+        input[type="text"], input[type="password"], select, input[type="date"], textarea { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: var(--rd); font-size: 0.95rem; font-family:inherit; }
         header { background: var(--nav); color: #FFF; padding: 20px; text-align: center; border-bottom: 5px solid var(--yw); }
         .tabs { display: flex; background: #e9ecef; flex-wrap: wrap; }
         .tab-btn { flex: 1; min-width: 80px; background: none; color: var(--nav); border: none; padding: 15px 5px; font-weight: 600; cursor: pointer; font-size: 0.9rem;}
@@ -150,21 +150,12 @@
                 <div id="admin-lista-profesores"></div>
             </div>
 
-            <!-- NUEVA SECCIÓN AZUL: EDICIÓN MASIVA -->
-            <div class="admin-panel-section" style="border-left: 5px solid #007BFF;">
-                <h4 style="color:#007BFF;">🔄 Migración y Edición Masiva</h4>
-                <p style="font-size:0.8rem; margin-bottom:10px;">Cambia el nombre o asigna una materia a todos los alumnos de un grupo a la vez.</p>
-                <div style="display:flex; gap:5px; flex-wrap:wrap;">
-                    <select id="admin-masivo-grupo-select" style="flex:1; min-width:150px;"><option value="">Selecciona grupo...</option></select>
-                    <input type="text" id="admin-masivo-nuevo-grupo" placeholder="Nuevo Grupo (ej. MATE6A)" style="flex:1; min-width:150px;">
-                    <input type="text" id="admin-masivo-materia" placeholder="Materia (ej. Matemáticas)" style="flex:1; min-width:150px;">
-                    <button class="btn" style="background:#007BFF; flex:1; min-width:150px;" onclick="actualizarGrupoMasivo()">Aplicar a todos</button>
-                </div>
-            </div>
-
-            <div class="admin-panel-section">
-                <h4>➕ Alta de Estudiante</h4>
-                <input type="text" id="nuevo-nombre" placeholder="Nombre del Alumno" style="margin-bottom:5px;">
+            <!-- SECCIÓN NUEVA: ALTA MASIVA -->
+            <div class="admin-panel-section" style="border-left: 5px solid var(--gr);">
+                <h4 style="color:var(--gr);">➕ Alta de Grupo Completo (Lista de Alumnos)</h4>
+                <p style="font-size:0.8rem; margin-bottom:10px;">Pega tu lista de estudiantes de Excel o Word. Cada línea se guardará como un estudiante distinto dentro del mismo grupo.</p>
+                <textarea id="nuevo-nombres-masivo" rows="6" placeholder="Juan Pérez López&#10;María Fernanda García&#10;Carlos Slim..."></textarea>
+                
                 <div style="display:flex; gap:5px; margin-bottom:5px;">
                     <input type="text" id="nuevo-grupo" placeholder="Grupo (ej. 6A)" style="flex:1;">
                     <input type="text" id="nuevo-materia" placeholder="Materia (ej. Matemáticas)" style="flex:1;">
@@ -175,11 +166,21 @@
                     <option value="Multicultural ingles">Multicultural inglés</option>
                     <option value="Multicultural frances">Multicultural francés</option>
                 </select>
-                <button class="btn" style="background:var(--gr);" onclick="agregarEstudiante()">Crear Alumno</button>
+                <button class="btn" style="background:var(--gr); width:100%; font-size:1.1rem; padding:12px;" onclick="agregarGrupoCompleto()">Crear Grupo Completo</button>
+            </div>
+
+            <div class="admin-panel-section" style="border-left: 5px solid #007BFF;">
+                <h4 style="color:#007BFF;">🔄 Migración y Edición Masiva</h4>
+                <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                    <select id="admin-masivo-grupo-select" style="flex:1; min-width:150px;"><option value="">Selecciona grupo...</option></select>
+                    <input type="text" id="admin-masivo-nuevo-grupo" placeholder="Nuevo Grupo" style="flex:1; min-width:150px;">
+                    <input type="text" id="admin-masivo-materia" placeholder="Materia" style="flex:1; min-width:150px;">
+                    <button class="btn" style="background:#007BFF; flex:1; min-width:150px;" onclick="actualizarGrupoMasivo()">Aplicar a todos</button>
+                </div>
             </div>
 
             <div class="admin-panel-section">
-                <h4>📋 Clonar Lista de Grupo</h4>
+                <h4>📋 Clonar Lista de Grupo Existente</h4>
                 <div style="display:flex; gap:5px;">
                     <input type="text" id="grupo-origen" placeholder="De: 6A">
                     <input type="text" id="grupo-destino" placeholder="A: TALLER6A">
@@ -202,7 +203,7 @@
             </div>
         </div>
     </div>
-    <script src="app.js?v=16"></script>
+    <script src="app.js?v=17"></script>
     <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }</script>
 </body>
 </html>

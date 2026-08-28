@@ -5,13 +5,11 @@ let historialCompleto = [];
 let reportesCompleto = [];
 
 document.getElementById('grupo-select').addEventListener('change', cargarAlumnos);
-
 document.getElementById('filtro-grupo').addEventListener('change', () => actualizarMaterias('historial'));
 document.getElementById('filtro-estudiante').addEventListener('input', () => actualizarMaterias('historial'));
 document.getElementById('filtro-grupo-rep').addEventListener('change', () => actualizarMaterias('reportes'));
 document.getElementById('filtro-estudiante-rep').addEventListener('input', () => actualizarMaterias('reportes'));
 
-// Pre-llenar el grupo al usar la edición masiva para hacerle la vida fácil al Admin
 document.getElementById('admin-masivo-grupo-select')?.addEventListener('change', (e) => {
     document.getElementById('admin-masivo-nuevo-grupo').value = e.target.value;
 });
@@ -278,7 +276,30 @@ function imprimirPDFReportes() {
     html2pdf().set({ margin: 10, filename: `Reportes_Chemlist_${new Date().toISOString().split('T')[0]}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(elemento).save().then(() => titulo.style.display = 'none');
 }
 
-/* --- ADMIN --- */
+/* --- ADMIN: LOGICA MASIVA DE GRUPOS --- */
+async function agregarGrupoCompleto() {
+    const nombresTexto = document.getElementById('nuevo-nombres-masivo').value;
+    const grupo = document.getElementById('nuevo-grupo').value;
+    const materia = document.getElementById('nuevo-materia').value;
+    const modalidad = document.getElementById('nuevo-modalidad').value;
+
+    if(!nombresTexto.trim() || !grupo) return alert('Por favor pega la lista de alumnos y escribe el nombre del grupo.');
+
+    // Separamos el bloque de texto por líneas, borramos espacios sobrantes y eliminamos líneas vacías
+    const nombresArray = nombresTexto.split('\n').map(n => n.trim()).filter(n => n !== '');
+
+    if(nombresArray.length === 0) return alert('No se detectaron nombres válidos.');
+
+    await fetch(`${API_URL}/admin/estudiantes-masivo`, {
+        method: 'POST',
+        body: JSON.stringify({ nombres: nombresArray, grupo, materia, modalidad })
+    });
+
+    alert(`✅ ¡Excelente! Se ha creado el grupo "${grupo}" con ${nombresArray.length} alumnos.`);
+    document.getElementById('nuevo-nombres-masivo').value = '';
+    configurarAccesos();
+}
+
 async function actualizarGrupoMasivo() {
     const grupo_actual = document.getElementById('admin-masivo-grupo-select').value;
     const nuevo_grupo = document.getElementById('admin-masivo-nuevo-grupo').value;
@@ -297,18 +318,6 @@ async function actualizarGrupoMasivo() {
         document.getElementById('admin-masivo-materia').value = '';
         configurarAccesos();
     }
-}
-
-async function agregarEstudiante() {
-    const nombre = document.getElementById('nuevo-nombre').value;
-    const grupo = document.getElementById('nuevo-grupo').value;
-    const materia = document.getElementById('nuevo-materia').value;
-    const modalidad = document.getElementById('nuevo-modalidad').value;
-    if(!nombre || !grupo) return alert('Completa nombre y grupo');
-    await fetch(`${API_URL}/admin/estudiante`, { method: 'POST', body: JSON.stringify({ nombre, grupo, materia, modalidad }) });
-    alert('Estudiante guardado.');
-    document.getElementById('nuevo-nombre').value = '';
-    configurarAccesos();
 }
 
 async function copiarLista() {

@@ -4,12 +4,9 @@ let alumnosGrupo = [];
 let historialCompleto = [];
 let reportesCompleto = [];
 let estudiantesEditando = [];
-let clasesGlobal = []; // Variable maestra para nutrir los checkboxes
+let clasesGlobal = [];
 
 document.getElementById('grupo-select').addEventListener('change', cargarAlumnos);
-document.getElementById('admin-masivo-grupo-select')?.addEventListener('change', (e) => {
-    document.getElementById('admin-masivo-nuevo-grupo').value = e.target.value;
-});
 
 async function login() {
     const u = document.getElementById('username').value;
@@ -30,7 +27,7 @@ async function login() {
 
 async function configurarAccesos() {
     const res = await fetch(`${API_URL}/grupos`);
-    clasesGlobal = await res.json(); // Guardamos en global para los permisos
+    clasesGlobal = await res.json(); 
     
     let clasesPermitidas = currentUser.grupos === 'ALL' ? clasesGlobal : clasesGlobal.filter(c => {
         const permitidos = currentUser.grupos.split(',');
@@ -61,7 +58,6 @@ async function configurarAccesos() {
     
     document.getElementById('admin-grupo-select').innerHTML = opcionesAdmin;
     if(document.getElementById('admin-borrar-grupo-select')) document.getElementById('admin-borrar-grupo-select').innerHTML = opcionesAdmin;
-    if(document.getElementById('admin-masivo-grupo-select')) document.getElementById('admin-masivo-grupo-select').innerHTML = opcionesAdmin;
     if(document.getElementById('materia-grupo-origen')) document.getElementById('materia-grupo-origen').innerHTML = opcionesAdmin;
 
     if (currentUser.rol === 'admin' || currentUser.rol === 'prefecto' || currentUser.rol === 'profesor') {
@@ -70,10 +66,9 @@ async function configurarAccesos() {
         cargarHistorial();
         cargarReportes();
     }
-    
     if (currentUser.rol === 'admin') {
         document.getElementById('btn-admin').style.display = 'block';
-        actualizarUIPermisosNuevo(); // Carga las casillas en el form vacío
+        actualizarUIPermisosNuevo();
         cargarProfesoresAdmin();
     }
 }
@@ -131,6 +126,7 @@ function verReporteEstudianteDesdeLista(nombre) {
     verReporteEstudiante(nombre, 'historial');
 }
 
+// LOGICA NUEVA: AGRUPAR ALUMNOS POR MODALIDAD EN EL PASE DE LISTA
 async function cargarAlumnos() {
     const val = document.getElementById('grupo-select').value;
     if(!val) return;
@@ -141,21 +137,34 @@ async function cargarAlumnos() {
     const res = await fetch(url);
     alumnosGrupo = await res.json();
     
-    document.getElementById('estudiantes').innerHTML = alumnosGrupo.map(a => `
-        <div class="student-row">
-            <strong><a href="#" onclick="verReporteEstudianteDesdeLista('${a.nombre}'); return false;" style="color:var(--nav); text-decoration:none; border-bottom:1px dashed var(--nav); cursor:pointer;">${a.nombre}</a></strong> <span class="modalidad-tag">${a.modalidad || 'Ad lucem'}</span><br><br>
-            <div class="options">
-                <label><input type="radio" name="est_${a.id}" value="Presente" checked> P</label>
-                <label style="color:#D32F2F;"><input type="radio" name="est_${a.id}" value="Falta"> F</label>
-                <label style="color:#007BFF;"><input type="radio" name="est_${a.id}" value="Justificada"> J</label>
-                <button class="btn" onclick="toggleReporte(${a.id})" style="float:right;">⚠️</button>
+    // Agrupar por modalidad
+    const gruposModalidad = alumnosGrupo.reduce((acc, a) => {
+        const mod = a.modalidad || 'General';
+        if(!acc[mod]) acc[mod] = [];
+        acc[mod].push(a);
+        return acc;
+    }, {});
+
+    let html = '';
+    for (const mod in gruposModalidad) {
+        html += `<h4 style="margin-top:15px; margin-bottom:10px; color:var(--gr); border-bottom:2px solid var(--yw); padding-bottom:5px;">🏫 ${mod}</h4>`;
+        html += gruposModalidad[mod].map(a => `
+            <div class="student-row">
+                <strong><a href="#" onclick="verReporteEstudianteDesdeLista('${a.nombre}'); return false;" style="color:var(--nav); text-decoration:none; border-bottom:1px dashed var(--nav); cursor:pointer;">${a.nombre}</a></strong><br><br>
+                <div class="options">
+                    <label><input type="radio" name="est_${a.id}" value="Presente" checked> P</label>
+                    <label style="color:#D32F2F;"><input type="radio" name="est_${a.id}" value="Falta"> F</label>
+                    <label style="color:#007BFF;"><input type="radio" name="est_${a.id}" value="Justificada"> J</label>
+                    <button class="btn" onclick="toggleReporte(${a.id})" style="float:right;">⚠️</button>
+                </div>
+                <div class="report-box" id="rep_${a.id}">
+                    <input type="text" id="motivo_${a.id}" placeholder="Razón del reporte...">
+                    <button class="btn" onclick="enviarReporte(${a.id}, '${a.nombre}')">Enviar</button>
+                </div>
             </div>
-            <div class="report-box" id="rep_${a.id}">
-                <input type="text" id="motivo_${a.id}" placeholder="Razón del reporte...">
-                <button class="btn" onclick="enviarReporte(${a.id}, '${a.nombre}')">Enviar</button>
-            </div>
-        </div>
-    `).join('');
+        `).join('');
+    }
+    document.getElementById('estudiantes').innerHTML = html;
 }
 
 function toggleReporte(id) {
@@ -177,9 +186,12 @@ async function enviarReporte(estudianteId, estudianteNombre) {
 async function guardarAsistencia() {
     if (alumnosGrupo.length === 0) return;
     const fecha = document.getElementById('fecha').value;
+    const hora = document.getElementById('hora-select').value;
+    if (!hora) return alert("⚠️ Por favor selecciona la hora de la clase antes de guardar.");
+
     const asistencias = alumnosGrupo.map(a => ({ estudiante_id: a.id, estado: document.querySelector(`input[name="est_${a.id}"]:checked`).value }));
-    await fetch(`${API_URL}/asistencia`, { method: 'POST', body: JSON.stringify({ fecha, asistencias }) });
-    alert('Asistencia registrada en la nube.');
+    await fetch(`${API_URL}/asistencia`, { method: 'POST', body: JSON.stringify({ fecha, hora, asistencias }) });
+    alert('✅ Asistencia registrada en la nube por hora.');
     cargarHistorial();
 }
 
@@ -245,9 +257,10 @@ function aplicarFiltrosHistorial() {
 }
 
 function renderizarTablaHistorial(datos) {
+    // AÑADIDAS LAS COLUMNAS HORA Y MODALIDAD
     document.getElementById('tabla-historial').innerHTML = datos.map(r => {
         let color = r.estado === 'Presente' ? 'var(--gr)' : r.estado === 'Falta' ? '#D32F2F' : '#007BFF';
-        return `<tr><td>${r.fecha}</td><td><strong>${r.grupo}</strong></td><td>${r.materia || 'General'}</td><td><a href="#" onclick="verReporteEstudiante('${r.nombre}', 'historial'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.nombre}</a></td><td style="color:${color}; font-weight:bold;">${r.estado}</td></tr>`;
+        return `<tr><td>${r.fecha}</td><td>${r.hora || '-'}</td><td><strong>${r.grupo}</strong></td><td>${r.materia || 'General'}</td><td>${r.modalidad || 'Ad lucem'}</td><td><a href="#" onclick="verReporteEstudiante('${r.nombre}', 'historial'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.nombre}</a></td><td style="color:${color}; font-weight:bold;">${r.estado}</td></tr>`;
     }).join('');
 }
 
@@ -255,7 +268,25 @@ function imprimirPDF() {
     const elemento = document.getElementById('area-impresion');
     const titulo = document.getElementById('titulo-pdf');
     titulo.style.display = 'block';
-    html2pdf().set({ margin: 10, filename: `Asistencias_Chemlist_${new Date().toISOString().split('T')[0]}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(elemento).save().then(() => titulo.style.display = 'none');
+    html2pdf().set({ margin: 10, filename: `Asistencias_Chemlist_${new Date().toISOString().split('T')[0]}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } }).from(elemento).save().then(() => titulo.style.display = 'none');
+}
+
+// NUEVA FUNCIÓN DE EXPORTACIÓN A EXCEL (CSV)
+function imprimirExcel() {
+    let csv = 'Fecha,Hora,Grupo,Materia,Modalidad,Nombre,Estado\n';
+    const filas = document.querySelectorAll('#tabla-historial tr');
+    filas.forEach(f => {
+        const cols = f.querySelectorAll('td');
+        if(cols.length > 0) {
+            const rowData = Array.from(cols).map(c => `"${c.innerText}"`).join(',');
+            csv += rowData + '\n';
+        }
+    });
+    const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `Asistencias_Chemlist_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
 }
 
 async function cargarReportes() {
@@ -300,31 +331,17 @@ function imprimirPDFReportes() {
     const elemento = document.getElementById('area-impresion-reportes');
     const titulo = document.getElementById('titulo-pdf-rep');
     titulo.style.display = 'block';
-    html2pdf().set({ margin: 10, filename: `Reportes_Chemlist_${new Date().toISOString().split('T')[0]}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(elemento).save().then(() => titulo.style.display = 'none');
+    html2pdf().set({ margin: 10, filename: `Reportes_Chemlist_${new Date().toISOString().split('T')[0]}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } }).from(elemento).save().then(() => titulo.style.display = 'none');
 }
 
-
-/* --- LOGICA DE CHECKBOXES DINÁMICOS PARA PERMISOS --- */
+/* --- ADMIN --- */
 function generarHTMLPermisos(id, rol, valoresStr) {
-    if(rol === 'admin') {
-        return `<div style="display:flex; align-items:center; height:100%;">
-                    <input type="hidden" id="${id}" value="ALL">
-                    <span style="width:100%; padding:10px; background:#eafaf1; border-radius:8px; color:var(--gr); font-weight:bold; text-align:center;">✅ Acceso Total (Admin)</span>
-                </div>`;
-    }
-    
+    if(rol === 'admin') return `<div style="display:flex; align-items:center; height:100%;"><input type="hidden" id="${id}" value="ALL"><span style="width:100%; padding:10px; background:#eafaf1; border-radius:8px; color:var(--gr); font-weight:bold; text-align:center;">✅ Acceso Total (Admin)</span></div>`;
     const valoresArray = valoresStr ? valoresStr.split(',') : [];
     let opciones = [];
-    
-    if(rol === 'prefecto') {
-        opciones = [...new Set(clasesGlobal.map(c => c.grupo))];
-    } else if(rol === 'profesor') {
-        opciones = clasesGlobal.map(c => `${c.grupo}|${c.materia||''}`);
-    }
-    
-    if (opciones.length === 0) {
-        return `<div style="padding:10px; font-size:0.8rem; color:#666; border:1px solid #ccc; border-radius:8px;">No hay clases o grupos creados en la base de datos.</div>`;
-    }
+    if(rol === 'prefecto') opciones = [...new Set(clasesGlobal.map(c => c.grupo))];
+    else if(rol === 'profesor') opciones = clasesGlobal.map(c => `${c.grupo}|${c.materia||''}`);
+    if (opciones.length === 0) return `<div style="padding:10px; font-size:0.8rem; color:#666; border:1px solid #ccc; border-radius:8px;">No hay clases o grupos creados en la base de datos.</div>`;
 
     let html = `<div style="max-height:120px; overflow-y:auto; border:1px solid #ccc; border-radius:8px; padding:8px; background:#fff; font-size:0.85rem; display:grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap:5px;">`;
     opciones.forEach(opt => {
@@ -334,9 +351,7 @@ function generarHTMLPermisos(id, rol, valoresStr) {
             const parts = opt.split('|');
             labelOpt = parts[1] ? `${parts[0]} - ${parts[1]}` : `${parts[0]} (Gral)`;
         }
-        html += `<label style="cursor:pointer; display:flex; align-items:center; gap:5px; background:#f4f7f6; padding:4px; border-radius:4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${labelOpt}">
-                    <input type="checkbox" class="chk_${id}" value="${opt}" ${checked}> ${labelOpt}
-                 </label>`;
+        html += `<label style="cursor:pointer; display:flex; align-items:center; gap:5px; background:#f4f7f6; padding:4px; border-radius:4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${labelOpt}"><input type="checkbox" class="chk_${id}" value="${opt}" ${checked}> ${labelOpt}</label>`;
     });
     html += `</div>`;
     return html;
@@ -357,29 +372,19 @@ function actualizarUIPermisosEdit(id) {
 function getPermisosValues(id, rol) {
     if(rol === 'admin') return 'ALL';
     const chks = document.querySelectorAll(`.chk_${id}:checked`);
-    const arr = Array.from(chks).map(c => c.value);
-    return arr.join(',');
+    return Array.from(chks).map(c => c.value).join(',');
 }
 
-
-/* --- ADMIN: LOGICA MASIVA DE GRUPOS Y MATERIAS --- */
 async function agregarGrupoCompleto() {
     const nombresTexto = document.getElementById('nuevo-nombres-masivo').value;
     const grupo = document.getElementById('nuevo-grupo').value;
     const materia = document.getElementById('nuevo-materia').value;
     const modalidad = document.getElementById('nuevo-modalidad').value;
-
     if(!nombresTexto.trim() || !grupo) return alert('Por favor pega la lista de alumnos y escribe el nombre del grupo.');
-
     const nombresArray = nombresTexto.split('\n').map(n => n.trim()).filter(n => n !== '');
     if(nombresArray.length === 0) return alert('No se detectaron nombres válidos.');
-
-    await fetch(`${API_URL}/admin/estudiantes-masivo`, {
-        method: 'POST',
-        body: JSON.stringify({ nombres: nombresArray, grupo, materia, modalidad })
-    });
-
-    alert(`✅ ¡Excelente! Se ha creado el grupo base "${grupo}" con ${nombresArray.length} alumnos.`);
+    await fetch(`${API_URL}/admin/estudiantes-masivo`, { method: 'POST', body: JSON.stringify({ nombres: nombresArray, grupo, materia, modalidad }) });
+    alert(`✅ Creado grupo base "${grupo}" con ${nombresArray.length} alumnos.`);
     document.getElementById('nuevo-nombres-masivo').value = '';
     configurarAccesos();
 }
@@ -388,25 +393,10 @@ async function asignarMateriaAGrupo() {
     const grupo = document.getElementById('materia-grupo-origen').value;
     const materia = document.getElementById('materia-nueva').value;
     if(!grupo || !materia) return alert('Selecciona el grupo base y escribe la nueva materia.');
-    
     await fetch(`${API_URL}/admin/asignar-materia`, { method: 'POST', body: JSON.stringify({ grupo, materia }) });
     alert(`✅ Clase de "${materia}" asignada al grupo ${grupo} con éxito.`);
     document.getElementById('materia-nueva').value = '';
     configurarAccesos();
-}
-
-async function actualizarGrupoMasivo() {
-    const grupo_actual = document.getElementById('admin-masivo-grupo-select').value;
-    const nuevo_grupo = document.getElementById('admin-masivo-nuevo-grupo').value;
-    const nueva_materia = document.getElementById('admin-masivo-materia').value;
-
-    if(!grupo_actual || !nuevo_grupo) return alert('Selecciona el grupo y escribe el nuevo nombre.');
-
-    if(confirm(`⚠️ Cambiar a todos los de "${grupo_actual}" a "${nuevo_grupo}"?`)) {
-        await fetch(`${API_URL}/admin/grupo-masivo`, { method: 'PUT', body: JSON.stringify({ grupo_actual, nuevo_grupo, nueva_materia }) });
-        alert('✅ Actualización masiva completada.');
-        configurarAccesos();
-    }
 }
 
 async function eliminarGrupoEntero() {
@@ -414,18 +404,12 @@ async function eliminarGrupoEntero() {
     const grupo = select ? select.value : null;
     if(!grupo) return alert('Selecciona un grupo para borrar.');
 
-    const confirmacion = prompt(`⚠️ PELIGRO: Vas a borrar TODO el grupo "${grupo}", incluyendo sus estudiantes, reportes de conducta y asistencias de todas las materias.\n\nEscribe el nombre del grupo exactamente para confirmar:`);
-    
+    const confirmacion = prompt(`⚠️ PELIGRO: Vas a borrar TODO el grupo "${grupo}". Escribe el nombre del grupo exactamente para confirmar:`);
     if (confirmacion !== null) {
         if (confirmacion.trim() === grupo.trim()) {
             try {
-                const response = await fetch(`${API_URL}/admin/borrar-grupo`, { 
-                    method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ grupo: grupo.trim() }) 
-                });
-                if(response.ok) { alert(`✅ Grupo destruido.`); configurarAccesos(); } 
-                else alert('Error del servidor.');
+                const response = await fetch(`${API_URL}/admin/borrar-grupo`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ grupo: grupo.trim() }) });
+                if(response.ok) { alert(`✅ Grupo destruido.`); configurarAccesos(); } else { alert('Error del servidor.'); }
             } catch (err) { alert(`❌ Error de conexión: ${err.message}`); }
         } else { alert(`❌ Cancelado.`); }
     }
@@ -434,22 +418,17 @@ async function eliminarGrupoEntero() {
 async function cargarEstudiantesAdmin() {
     const grupo = document.getElementById('admin-grupo-select').value;
     const bulkDiv = document.getElementById('admin-bulk-actions');
-    if(!grupo) {
-        bulkDiv.style.display = 'none';
-        document.getElementById('admin-lista-estudiantes').innerHTML = '';
-        return;
-    }
+    if(!grupo) { bulkDiv.style.display = 'none'; document.getElementById('admin-lista-estudiantes').innerHTML = ''; return; }
     const res = await fetch(`${API_URL}/estudiantes?grupo=${grupo}`);
     const estudiantes = await res.json();
-    
     estudiantesEditando = estudiantes.map(e => e.id);
     bulkDiv.style.display = estudiantes.length > 0 ? 'block' : 'none';
 
     document.getElementById('admin-lista-estudiantes').innerHTML = estudiantes.map(e => `
-        <div style="background:#fff; padding:15px; border-radius:8px; margin-bottom:10px; border:1px solid #ccc; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
+        <div style="background:#fff; padding:15px; border-radius:8px; margin-bottom:10px; border:1px solid #ccc;">
             <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
-                <input type="text" id="edit_nom_${e.id}" value="${e.nombre}" style="flex:2; margin:0; font-weight:bold;" placeholder="Nombre">
-                <select id="edit_mod_${e.id}" style="flex:1; margin:0; border:2px solid var(--gr); background:#eafaf1; font-weight:bold; color:var(--gr);">
+                <input type="text" id="edit_nom_${e.id}" value="${e.nombre}" style="flex:2; margin:0; font-weight:bold;">
+                <select id="edit_mod_${e.id}" style="flex:1; margin:0; border:2px solid var(--gr); color:var(--gr); font-weight:bold;">
                     <option value="Ad lucem" ${e.modalidad==='Ad lucem'?'selected':''}>Ad lucem</option>
                     <option value="360" ${e.modalidad==='360'?'selected':''}>360</option>
                     <option value="Multicultural ingles" ${e.modalidad==='Multicultural ingles'?'selected':''}>Multi. Inglés</option>
@@ -457,10 +436,10 @@ async function cargarEstudiantesAdmin() {
                 </select>
             </div>
             <div style="display:flex; gap:10px;">
-                <input type="text" id="edit_gpo_${e.id}" value="${e.grupo}" style="flex:1; margin:0;" placeholder="Grupo">
-                <input type="text" id="edit_mat_${e.id}" value="${e.materia || ''}" style="flex:1; margin:0;" placeholder="Materia">
-                <button class="btn" style="background:#FFC107; color:#000; padding:10px;" onclick="editarEstudiante(${e.id})" title="Guardar individualmente">💾</button>
-                <button class="btn" style="background:#D32F2F; padding:10px;" onclick="eliminarEstudiante(${e.id})" title="Eliminar alumno">🗑️</button>
+                <input type="text" id="edit_gpo_${e.id}" value="${e.grupo}" style="flex:1; margin:0;">
+                <input type="text" id="edit_mat_${e.id}" value="${e.materia || ''}" style="flex:1; margin:0;">
+                <button class="btn" style="background:#FFC107; color:#000; padding:10px;" onclick="editarEstudiante(${e.id})">💾</button>
+                <button class="btn" style="background:#D32F2F; padding:10px;" onclick="eliminarEstudiante(${e.id})">🗑️</button>
             </div>
         </div>
     `).join('');
@@ -470,22 +449,10 @@ async function guardarCambiosGrupo() {
     if(!estudiantesEditando || estudiantesEditando.length === 0) return;
     const btn = document.getElementById('btn-guardar-grupo');
     btn.innerText = '⏳ Guardando...';
-    
-    const payload = estudiantesEditando.map(id => ({
-        id: id,
-        nombre: document.getElementById(`edit_nom_${id}`).value,
-        grupo: document.getElementById(`edit_gpo_${id}`).value,
-        materia: document.getElementById(`edit_mat_${id}`).value,
-        modalidad: document.getElementById(`edit_mod_${id}`).value
-    }));
-
-    await fetch(`${API_URL}/admin/estudiantes-batch`, {
-        method: 'PUT',
-        body: JSON.stringify(payload)
-    });
-    
+    const payload = estudiantesEditando.map(id => ({ id: id, nombre: document.getElementById(`edit_nom_${id}`).value, grupo: document.getElementById(`edit_gpo_${id}`).value, materia: document.getElementById(`edit_mat_${id}`).value, modalidad: document.getElementById(`edit_mod_${id}`).value }));
+    await fetch(`${API_URL}/admin/estudiantes-batch`, { method: 'PUT', body: JSON.stringify(payload) });
     btn.innerText = '💾 Guardar Todos los Cambios del Grupo';
-    alert('✅ ¡Se han guardado las modalidades y datos de todos los alumnos del grupo!');
+    alert('✅ ¡Se han guardado las modalidades y datos!');
     cargarEstudiantesAdmin(); 
 }
 
@@ -494,12 +461,7 @@ async function editarEstudiante(id) {
     await fetch(`${API_URL}/admin/estudiante`, { method: 'PUT', body: JSON.stringify({ id, nombre, grupo, materia, modalidad }) });
     alert('Alumno actualizado.'); configurarAccesos();
 }
-
-async function eliminarEstudiante(id) {
-    if(!confirm('¿Eliminar?')) return;
-    await fetch(`${API_URL}/admin/estudiante`, { method: 'DELETE', body: JSON.stringify({ id }) });
-    cargarEstudiantesAdmin();
-}
+async function eliminarEstudiante(id) { if(!confirm('¿Eliminar?')) return; await fetch(`${API_URL}/admin/estudiante`, { method: 'DELETE', body: JSON.stringify({ id }) }); cargarEstudiantesAdmin(); }
 
 async function cargarProfesoresAdmin() {
     const res = await fetch(`${API_URL}/admin/profesores`);
@@ -520,9 +482,7 @@ async function cargarProfesoresAdmin() {
                         <option value="admin" ${p.rol==='admin'?'selected':''}>Administrador</option>
                     </select>
                 </div>
-                <div id="wrapper_permisos_${p.id}" style="flex:2;">
-                    ${generarHTMLPermisos(`edit_prof_grupos_${p.id}`, p.rol, p.grupos)}
-                </div>
+                <div id="wrapper_permisos_${p.id}" style="flex:2;">${generarHTMLPermisos(`edit_prof_grupos_${p.id}`, p.rol, p.grupos)}</div>
                 <div style="display:flex; flex-direction:column; gap:5px;">
                     <button class="btn" style="background:#FFC107; color:#000; height:100%; font-weight:bold; padding:10px;" onclick="editarProfesor(${p.id})">💾 Guardar</button>
                     <button class="btn" style="background:#D32F2F; height:100%; padding:10px;" onclick="eliminarProfesor(${p.id})">🗑️</button>
@@ -532,38 +492,19 @@ async function cargarProfesoresAdmin() {
     `).join('');
 }
 
+async function editarProfesor(id) {
+    const username = document.getElementById(`edit_prof_user_${id}`).value, password = document.getElementById(`edit_prof_pass_${id}`).value, nombre = document.getElementById(`edit_prof_nom_${id}`).value, rol = document.getElementById(`edit_prof_rol_${id}`).value;
+    const grupos = getPermisosValues(`edit_prof_grupos_${id}`, rol);
+    if(!grupos && rol !== 'admin') return alert('Debes seleccionar al menos un grupo o materia marcando las casillas.');
+    await fetch(`${API_URL}/admin/profesor`, { method: 'PUT', body: JSON.stringify({ id, username, password, nombre, rol, grupos }) });
+    alert('Actualizado.'); cargarProfesoresAdmin();
+}
+async function eliminarProfesor(id) { if(confirm('¿Borrar?')) { await fetch(`${API_URL}/admin/profesor`, { method: 'DELETE', body: JSON.stringify({ id }) }); cargarProfesoresAdmin(); } }
 async function agregarProfesor() {
-    const username = document.getElementById('nuevo-prof-user').value;
-    const password = document.getElementById('nuevo-prof-pass').value;
-    const nombre = document.getElementById('nuevo-prof-nom').value;
-    const rol = document.getElementById('nuevo-prof-rol').value;
+    const username = document.getElementById('nuevo-prof-user').value, password = document.getElementById('nuevo-prof-pass').value, nombre = document.getElementById('nuevo-prof-nom').value, rol = document.getElementById('nuevo-prof-rol').value;
     const grupos = getPermisosValues('nuevo-prof-grupos', rol);
-    
     if(!username || !password) return alert('Usuario y clave obligatorios');
     if(!grupos && rol !== 'admin') return alert('Debes seleccionar al menos un grupo o materia marcando las casillas.');
-
     await fetch(`${API_URL}/admin/profesor`, { method: 'POST', body: JSON.stringify({ username, password, nombre, rol, grupos }) });
-    alert('Personal agregado exitosamente.');
     cargarProfesoresAdmin();
-}
-
-async function editarProfesor(id) {
-    const username = document.getElementById(`edit_prof_user_${id}`).value;
-    const password = document.getElementById(`edit_prof_pass_${id}`).value;
-    const nombre = document.getElementById(`edit_prof_nom_${id}`).value;
-    const rol = document.getElementById(`edit_prof_rol_${id}`).value;
-    const grupos = getPermisosValues(`edit_prof_grupos_${id}`, rol);
-
-    if(!grupos && rol !== 'admin') return alert('Debes seleccionar al menos un grupo o materia marcando las casillas.');
-
-    await fetch(`${API_URL}/admin/profesor`, { method: 'PUT', body: JSON.stringify({ id, username, password, nombre, rol, grupos }) });
-    alert('Usuario actualizado.');
-    cargarProfesoresAdmin();
-}
-
-async function eliminarProfesor(id) {
-    if(confirm('¿Borrar definitivamente a este usuario?')) { 
-        await fetch(`${API_URL}/admin/profesor`, { method: 'DELETE', body: JSON.stringify({ id }) }); 
-        cargarProfesoresAdmin(); 
-    } 
 }

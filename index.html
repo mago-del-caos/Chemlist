@@ -29,8 +29,8 @@
         .options label { background: #FFF; padding: 8px 12px; border-radius: 20px; border: 1px solid #ccc; cursor: pointer; margin-right: 5px; font-weight: bold; }
         .report-box { display:none; margin-top:10px; }
         .report-box input { width: calc(100% - 90px); display:inline-block; margin-bottom:0; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.9rem; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 0.85rem; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
         th { background: var(--nav); color: #FFF; }
         .badge { background: var(--yw); color: #000; padding: 3px 8px; border-radius: 12px; font-size: 0.8rem; margin-left: 10px; }
         .admin-panel-section { background: var(--bg); padding: 15px; border-radius: var(--rd); margin-bottom: 20px; border: 1px solid #ddd; }
@@ -64,7 +64,23 @@
 
         <div id="lista" class="tab-content active">
             <select id="grupo-select"><option value="">Cargando clases...</option></select>
-            <input type="date" id="fecha">
+            <!-- NUEVO: SELECCIÓN DE HORA Y FECHA -->
+            <div style="display:flex; gap:5px; margin-bottom:10px;">
+                <input type="date" id="fecha" style="flex:1; margin:0;">
+                <select id="hora-select" style="flex:1; margin:0;">
+                    <option value="">Hora de clase...</option>
+                    <option value="7:00 - 7:50">1ª: 7:00 a 7:50</option>
+                    <option value="7:50 - 8:40">2ª: 7:50 a 8:40</option>
+                    <option value="8:40 - 9:30">3ª: 8:40 a 9:30</option>
+                    <option value="9:30 - 10:20">4ª: 9:30 a 10:20</option>
+                    <option value="10:50 - 11:40">5ª: 10:50 a 11:40</option>
+                    <option value="11:40 - 12:30">6ª: 11:40 a 12:30</option>
+                    <option value="12:50 - 13:40">7ª: 12:50 a 13:40</option>
+                    <option value="13:40 - 14:30">8ª: 13:40 a 14:30</option>
+                    <option value="14:30 - 15:20">9ª: 14:30 a 15:20</option>
+                </select>
+            </div>
+            
             <div id="estudiantes"></div>
             <button class="btn btn-save" onclick="guardarAsistencia()">Guardar Asistencia</button>
         </div>
@@ -86,17 +102,20 @@
                 <button class="btn" id="btn-materias-historial" onclick="toggleMaterias('historial')" style="display:none; background:#007BFF; height:100%;">📚 Materias</button>
                 <button class="btn" style="background:var(--nav); height:100%;" onclick="aplicarFiltrosHistorial()">🔍 Filtrar</button>
                 <button class="btn" style="background:#D32F2F; height:100%;" onclick="imprimirPDF()">📄 PDF</button>
+                <!-- NUEVO BOTÓN EXCEL -->
+                <button class="btn" style="background:var(--gr); height:100%;" onclick="imprimirExcel()">📊 Excel (CSV)</button>
             </div>
             <div id="materias-container-historial" style="display:none; background:#e9ecef; padding:15px; border-radius:var(--rd); margin-bottom:15px;">
                 <strong>Selecciona las materias a incluir en el reporte:</strong><div id="lista-materias-historial" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;"></div>
             </div>
             <div id="area-impresion" style="overflow-x:auto; background:#FFF; padding:10px;">
                 <h2 id="titulo-pdf" style="display:none; text-align:center; color:var(--nav); margin-bottom:15px; border-bottom:2px solid var(--yw); padding-bottom:10px;">Reporte de Asistencias - Chemlist</h2>
-                <table><thead><tr><th>Fecha</th><th>Grupo</th><th>Materia</th><th>Nombre</th><th>Estado</th></tr></thead><tbody id="tabla-historial"></tbody></table>
+                <table><thead><tr><th>Fecha</th><th>Hora</th><th>Grupo</th><th>Materia</th><th>Modalidad</th><th>Nombre</th><th>Estado</th></tr></thead><tbody id="tabla-historial"></tbody></table>
             </div>
         </div>
 
         <div id="reportes" class="tab-content">
+            <!-- (Secciones de reportes intactas, las maneja el JS) -->
             <h3 style="margin-bottom:10px; color:var(--nav);">Filtros de Incidentes</h3>
             <div class="filtros-container">
                 <select id="filtro-grupo-rep"><option value="">Todos los grupos</option></select>
@@ -128,14 +147,11 @@
             
             <div class="admin-panel-section">
                 <h4>👨‍🏫 Gestión de Personal</h4>
-                <p style="font-size:0.8rem; margin-bottom:10px;">Selecciona el rol y marca las casillas con los grupos o materias que el profesor podrá ver.</p>
-                
                 <div style="display:flex; gap:5px; margin-bottom:10px;">
                     <input type="text" id="nuevo-prof-user" placeholder="Usuario" style="flex:1;">
                     <input type="text" id="nuevo-prof-pass" placeholder="Clave" style="flex:1;">
                     <input type="text" id="nuevo-prof-nom" placeholder="Nombre Real" style="flex:2;">
                 </div>
-                <!-- AQUÍ ENTRA LA MAGIA DE LOS CHECKBOXES DINÁMICOS -->
                 <div style="display:flex; gap:5px; margin-bottom:10px; align-items:stretch;">
                     <div style="flex:1;">
                         <label style="font-size:0.75rem; font-weight:bold;">Rol del Usuario:</label>
@@ -145,12 +161,9 @@
                             <option value="admin">Administrador (Total)</option>
                         </select>
                     </div>
-                    <div id="container-nuevo-permisos" style="flex:2;">
-                        <!-- Se llena con JS -->
-                    </div>
+                    <div id="container-nuevo-permisos" style="flex:2;"></div>
                     <button class="btn" style="background:var(--nav); height:42px; align-self:flex-end;" onclick="agregarProfesor()">Añadir Personal</button>
                 </div>
-                
                 <button class="btn" onclick="cargarProfesoresAdmin()" style="width:100%; background:#777; margin-bottom:10px;">Cargar Lista de Personal</button>
                 <div id="admin-lista-profesores"></div>
             </div>
@@ -165,7 +178,7 @@
             </div>
 
             <div class="admin-panel-section" style="border-left: 5px solid var(--gr);">
-                <h4 style="color:var(--gr);">➕ Alta de Grupo Base (Desde Excel/Word)</h4>
+                <h4 style="color:var(--gr);">➕ Alta de Grupo Base</h4>
                 <textarea id="nuevo-nombres-masivo" rows="6" placeholder="Pega aquí la lista..."></textarea>
                 <div style="display:flex; gap:5px; margin-bottom:5px;">
                     <input type="text" id="nuevo-grupo" placeholder="Grupo (ej. 6A)" style="flex:1;">
@@ -187,16 +200,6 @@
                 <div id="admin-lista-estudiantes"></div>
             </div>
             
-            <div class="admin-panel-section" style="border-left: 5px solid #007BFF;">
-                <h4 style="color:#007BFF;">🔄 Corrección Masiva</h4>
-                <div style="display:flex; gap:5px; flex-wrap:wrap;">
-                    <select id="admin-masivo-grupo-select" style="flex:1; min-width:150px;"><option value="">Selecciona grupo...</option></select>
-                    <input type="text" id="admin-masivo-nuevo-grupo" placeholder="Cambiar a Grupo..." style="flex:1; min-width:150px;">
-                    <input type="text" id="admin-masivo-materia" placeholder="Cambiar a Materia..." style="flex:1; min-width:150px;">
-                    <button class="btn" style="background:#007BFF; flex:1; min-width:150px;" onclick="actualizarGrupoMasivo()">Aplicar a todos</button>
-                </div>
-            </div>
-
             <div class="admin-panel-section" style="border-left: 5px solid #D32F2F;">
                 <h4 style="color:#D32F2F;">⚠️ Peligro: Destruir Grupo Entero</h4>
                 <div style="display:flex; gap:5px;">
@@ -206,7 +209,7 @@
             </div>
         </div>
     </div>
-    <script src="app.js?v=23"></script>
+    <script src="app.js?v=24"></script>
     <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }</script>
 </body>
 </html>

@@ -1,5 +1,5 @@
-const CACHE_NAME = 'chemlist-v23';
-const urlsToCache = ['./', './index.html', './app.js?v=23', './logo.png', './manifest.json'];
+const CACHE_NAME = 'chemlist-v24';
+const urlsToCache = ['./', './index.html', './app.js?v=24', './logo.png', './manifest.json'];
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();

@@ -193,17 +193,6 @@ function toggleMaterias(origen) {
     el.style.display = el.style.display === 'block' ? 'none' : 'block';
 }
 
-async function cargarHistorial() {
-    const res = await fetch(`${API_URL}/asistencia-historial`);
-    let data = await res.json();
-    if (currentUser.rol === 'profesor') {
-        const perms = currentUser.grupos.split(',');
-        data = data.filter(r => perms.includes(r.grupo) || perms.includes(`${r.grupo}|${r.materia||''}`));
-    }
-    historialCompleto = data;
-    aplicarFiltrosHistorial();
-}
-
 function getDiaSemana(fechaStr) {
     if(!fechaStr) return '';
     const dias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
@@ -213,6 +202,17 @@ function getDiaSemana(fechaStr) {
     let idx = d.getDay() - 1;
     if(idx === -1) idx = 6;
     return dias[idx];
+}
+
+async function cargarHistorial() {
+    const res = await fetch(`${API_URL}/asistencia-historial`);
+    let data = await res.json();
+    if (currentUser.rol === 'profesor') {
+        const perms = currentUser.grupos.split(',');
+        data = data.filter(r => perms.includes(r.grupo) || perms.includes(`${r.grupo}|${r.materia||''}`));
+    }
+    historialCompleto = data;
+    aplicarFiltrosHistorial();
 }
 
 function aplicarFiltrosHistorial() {
@@ -265,7 +265,7 @@ function renderizarTablaHistorial(datos) {
             let colKey = `${r.fecha} | ${r.hora||'Sin hora'}`;
             let estadoCorto = r.estado === 'Presente' ? 'P' : r.estado === 'Falta' ? 'F' : 'J';
             let colorText = r.estado === 'Presente' ? 'var(--gr)' : r.estado === 'Falta' ? '#D32F2F' : '#007BFF';
-            let bgFalta = r.estado === 'Falta' ? '#ffcdd2' : ''; // Casilla roja pálida
+            let bgFalta = r.estado === 'Falta' ? '#ffcdd2' : ''; 
             alumnosMap[mod][nom][colKey] = { estado: estadoCorto, colorText: colorText, bgFalta: bgFalta, materia: r.materia || 'Gral' };
         });
 
@@ -303,34 +303,18 @@ function renderizarTablaHistorial(datos) {
     }
 }
 
-// NUEVO EXPORTADOR EXCEL (.xls real para mantener los colores ROJOS y los días)
 function imprimirExcel() {
     const vista = document.getElementById('vista-historial').value;
     const tabla = document.getElementById('tabla-historial');
     if(!tabla || tabla.rows.length === 0) return alert('No hay datos para exportar.');
 
     let clone = tabla.cloneNode(true);
-    
     const links = clone.querySelectorAll('a');
-    links.forEach(a => {
-        const span = document.createElement('span');
-        span.innerText = a.innerText;
-        a.parentNode.replaceChild(span, a);
-    });
-
+    links.forEach(a => { const span = document.createElement('span'); span.innerText = a.innerText; a.parentNode.replaceChild(span, a); });
     const celdas = clone.querySelectorAll('th, td');
-    celdas.forEach(c => {
-        c.style.border = '1px solid #000000';
-    });
+    celdas.forEach(c => { c.style.border = '1px solid #000000'; });
 
-    let html = `
-    <html xmlns:o="urn:schemas-microsoft-com:office:office"
-          xmlns:x="urn:schemas-microsoft-com:office:excel"
-          xmlns="http://www.w3.org/TR/REC-html40">
-    <head><meta charset="UTF-8"></head><body>
-        <table border="1" style="border-collapse: collapse;">${clone.innerHTML}</table>
-    </body></html>`;
-    
+    let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"></head><body><table border="1" style="border-collapse: collapse;">${clone.innerHTML}</table></body></html>`;
     const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -353,12 +337,36 @@ async function cargarReportes() {
         data = data.filter(r => perms.includes(r.grupo) || perms.includes(`${r.grupo}|${r.materia||''}`));
     }
     reportesCompleto = data;
-    renderizarTablaReportes(reportesCompleto);
+    aplicarFiltrosReportes();
 }
 
-function aplicarFiltrosReportes() { /* ... código intacto ... */ }
-function renderizarTablaReportes(datos) { /* ... código intacto ... */ }
-function imprimirPDFReportes() { /* ... código intacto ... */ }
+function aplicarFiltrosReportes() {
+    const grupo = document.getElementById('filtro-grupo-rep').value.toLowerCase();
+    const materia = document.getElementById('filtro-materia-rep').value.toLowerCase();
+    const estudiante = document.getElementById('filtro-estudiante-rep').value.toLowerCase().trim();
+    const fechas = obtenerFechasFiltro('reportes');
+
+    const filtrados = reportesCompleto.filter(r => {
+        const matchGrupo = grupo === '' || r.grupo.toLowerCase().includes(grupo);
+        const matchMateria = materia === '' || (r.materia && r.materia.toLowerCase().includes(materia));
+        const matchEstudiante = estudiante === '' || r.estudiante_nombre.toLowerCase().includes(estudiante);
+        let matchFecha = true;
+        if (fechas.inicio && fechas.fin) matchFecha = r.fecha >= fechas.inicio && r.fecha <= fechas.fin;
+        return matchGrupo && matchMateria && matchEstudiante && matchFecha;
+    });
+    renderizarTablaReportes(filtrados);
+}
+
+function renderizarTablaReportes(datos) {
+    document.getElementById('tabla-reportes').innerHTML = datos.map(r => `<tr><td>${r.fecha}</td><td><b>${r.grupo}</b></td><td>${r.materia || 'General'}</td><td><a href="#" onclick="verReporteEstudiante('${r.estudiante_nombre}', 'reportes'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.estudiante_nombre}</a></td><td>${r.motivo}</td><td><i>${r.profesor_nombre}</i></td></tr>`).join('');
+}
+
+function imprimirPDFReportes() {
+    const elemento = document.getElementById('area-impresion-reportes');
+    const titulo = document.getElementById('titulo-pdf-rep');
+    titulo.style.display = 'block';
+    html2pdf().set({ margin: 10, filename: `Reportes_Chemlist_${new Date().toISOString().split('T')[0]}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } }).from(elemento).save().then(() => titulo.style.display = 'none');
+}
 
 /* --- ADMIN --- */
 function generarHTMLPermisos(id, rol, valoresStr) {
@@ -367,7 +375,7 @@ function generarHTMLPermisos(id, rol, valoresStr) {
     let opciones = [];
     if(rol === 'prefecto') opciones = [...new Set(clasesGlobal.map(c => c.grupo))];
     else if(rol === 'profesor') opciones = clasesGlobal.map(c => `${c.grupo}|${c.materia||''}`);
-    if (opciones.length === 0) return `<div style="padding:10px; font-size:0.8rem; color:#666; border:1px solid #ccc; border-radius:8px;">No hay clases o grupos creados.</div>`;
+    if (opciones.length === 0) return `<div style="padding:10px; font-size:0.8rem; color:#666; border:1px solid #ccc; border-radius:8px;">No hay clases o grupos creados en la base de datos.</div>`;
 
     let html = `<div style="max-height:120px; overflow-y:auto; border:1px solid #ccc; border-radius:8px; padding:8px; background:#fff; font-size:0.85rem; display:grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap:5px;">`;
     opciones.forEach(opt => {
@@ -425,19 +433,41 @@ async function asignarMateriaAGrupo() {
     configurarAccesos();
 }
 
+async function copiarLista() {
+    const origen = document.getElementById('grupo-origen').value;
+    const destino = document.getElementById('grupo-destino').value;
+    if(!origen || !destino) return alert('Completa los campos');
+    await fetch(`${API_URL}/admin/copiar`, { method: 'POST', body: JSON.stringify({ origen, destino }) });
+    alert(`Lista copiada a ${destino}.`);
+    document.getElementById('grupo-origen').value = ''; document.getElementById('grupo-destino').value = '';
+    configurarAccesos();
+}
+
+async function actualizarGrupoMasivo() {
+    const grupo_actual = document.getElementById('admin-masivo-grupo-select').value;
+    const nuevo_grupo = document.getElementById('admin-masivo-nuevo-grupo').value;
+    const nueva_materia = document.getElementById('admin-masivo-materia').value;
+    if(!grupo_actual || !nuevo_grupo) return alert('Selecciona el grupo y escribe el nuevo nombre.');
+    if(confirm(`⚠️ Cambiar a todos los de "${grupo_actual}" a "${nuevo_grupo}"?`)) {
+        await fetch(`${API_URL}/admin/grupo-masivo`, { method: 'PUT', body: JSON.stringify({ grupo_actual, nuevo_grupo, nueva_materia }) });
+        alert('✅ Actualización masiva completada.');
+        configurarAccesos();
+    }
+}
+
 async function eliminarGrupoEntero() {
     const select = document.getElementById('admin-borrar-grupo-select');
     const grupo = select ? select.value : null;
     if(!grupo) return alert('Selecciona un grupo para borrar del menú desplegable.');
 
     const confirmacion = prompt(`⚠️ PELIGRO: Vas a borrar TODO el grupo "${grupo}". Escribe el nombre del grupo exactamente para confirmar:`);
-    if (confirmacion !== null) {
-        if (confirmacion.trim() === grupo.trim()) {
-            try {
-                const response = await fetch(`${API_URL}/admin/borrar-grupo`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ grupo: grupo.trim() }) });
-                if(response.ok) { alert(`✅ Grupo destruido.`); configurarAccesos(); } else { alert('Error del servidor.'); }
-            } catch (err) { alert(`❌ Error de conexión: ${err.message}`); }
-        } else { alert(`❌ Cancelado.`); }
+    if (confirmacion !== null && confirmacion.trim() === grupo.trim()) {
+        try {
+            const response = await fetch(`${API_URL}/admin/borrar-grupo`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ grupo: grupo.trim() }) });
+            if(response.ok) { alert(`✅ Grupo destruido.`); configurarAccesos(); } else { alert('Error del servidor.'); }
+        } catch (err) { alert(`❌ Error de conexión: ${err.message}`); }
+    } else {
+        alert('Eliminación cancelada.');
     }
 }
 

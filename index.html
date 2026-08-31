@@ -67,14 +67,10 @@
                 <input type="date" id="fecha" style="flex:1; margin:0;">
                 <select id="hora-select" style="flex:1; margin:0;">
                     <option value="">Hora de clase...</option>
-                    <option value="7:00 - 7:50">1ª: 7:00 a 7:50</option>
-                    <option value="7:50 - 8:40">2ª: 7:50 a 8:40</option>
-                    <option value="8:40 - 9:30">3ª: 8:40 a 9:30</option>
-                    <option value="9:30 - 10:20">4ª: 9:30 a 10:20</option>
-                    <option value="10:50 - 11:40">5ª: 10:50 a 11:40</option>
-                    <option value="11:40 - 12:30">6ª: 11:40 a 12:30</option>
-                    <option value="12:50 - 13:40">7ª: 12:50 a 13:40</option>
-                    <option value="13:40 - 14:30">8ª: 13:40 a 14:30</option>
+                    <option value="7:00 - 7:50">1ª: 7:00 a 7:50</option><option value="7:50 - 8:40">2ª: 7:50 a 8:40</option>
+                    <option value="8:40 - 9:30">3ª: 8:40 a 9:30</option><option value="9:30 - 10:20">4ª: 9:30 a 10:20</option>
+                    <option value="10:50 - 11:40">5ª: 10:50 a 11:40</option><option value="11:40 - 12:30">6ª: 11:40 a 12:30</option>
+                    <option value="12:50 - 13:40">7ª: 12:50 a 13:40</option><option value="13:40 - 14:30">8ª: 13:40 a 14:30</option>
                     <option value="14:30 - 15:20">9ª: 14:30 a 15:20</option>
                 </select>
             </div>
@@ -93,7 +89,6 @@
                     </select>
                 </div>
             </div>
-            
             <div class="filtros-container">
                 <select id="filtro-grupo"><option value="">Todos los grupos</option></select>
                 <select id="filtro-materia"><option value="">Todas las materias</option></select>
@@ -109,10 +104,7 @@
                 <button class="btn" id="btn-materias-historial" onclick="toggleMaterias('historial')" style="display:none; background:#007BFF; height:100%;">📚 Materias</button>
                 <button class="btn" style="background:var(--nav); height:100%;" onclick="aplicarFiltrosHistorial()">🔍 Filtrar</button>
                 <button class="btn" style="background:#D32F2F; height:100%;" onclick="imprimirPDF()">📄 PDF</button>
-                <button class="btn" style="background:var(--gr); height:100%;" onclick="imprimirExcel()">📊 Excel (CSV)</button>
-            </div>
-            <div id="materias-container-historial" style="display:none; background:#e9ecef; padding:15px; border-radius:var(--rd); margin-bottom:15px;">
-                <strong>Selecciona las materias a incluir en el reporte:</strong><div id="lista-materias-historial" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;"></div>
+                <button class="btn" style="background:var(--gr); height:100%;" onclick="imprimirExcel()">📊 Excel</button>
             </div>
             <div id="area-impresion" style="overflow-x:auto; background:#FFF; padding:10px;">
                 <h2 id="titulo-pdf" style="display:none; text-align:center; color:var(--nav); margin-bottom:15px; border-bottom:2px solid var(--yw); padding-bottom:10px;">Reporte de Asistencias - Chemlist</h2>
@@ -120,7 +112,6 @@
             </div>
         </div>
 
-        <!-- Pestaña Reportes -->
         <div id="reportes" class="tab-content">
             <h3 style="margin-bottom:10px; color:var(--nav);">Filtros de Incidentes</h3>
             <div class="filtros-container">
@@ -139,23 +130,102 @@
                 <button class="btn" style="background:var(--nav); height:100%;" onclick="aplicarFiltrosReportes()">🔍 Filtrar</button>
                 <button class="btn" style="background:#D32F2F; height:100%;" onclick="imprimirPDFReportes()">📄 PDF</button>
             </div>
-            <div id="materias-container-reportes" style="display:none; background:#e9ecef; padding:15px; border-radius:var(--rd); margin-bottom:15px;">
-                <strong>Selecciona las materias a incluir en el reporte:</strong><div id="lista-materias-reportes" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;"></div>
-            </div>
             <div id="area-impresion-reportes" style="overflow-x:auto; background:#FFF; padding:10px;">
                 <h2 id="titulo-pdf-rep" style="display:none; text-align:center; color:var(--nav); margin-bottom:15px; border-bottom:2px solid var(--yw); padding-bottom:10px;">Historial de Reportes Disciplinarios - Chemlist</h2>
                 <table><thead><tr><th>Fecha</th><th>Grupo</th><th>Materia</th><th>Alumno</th><th>Motivo</th><th>Reportó</th></tr></thead><tbody id="tabla-reportes"></tbody></table>
             </div>
         </div>
 
-        <!-- Panel Admin Omitido por brevedad (El JS lo maneja sin tocar el HTML) -->
         <div id="admin-panel" class="tab-content">
             <h3 style="margin-bottom:15px; color:var(--nav);">Control Maestro</h3>
-            <p><i>(Funciones de administración activas)</i></p>
-            <!-- Mismo contenido que en v24 -->
+            
+            <div class="admin-panel-section">
+                <h4>👨‍🏫 Gestión de Personal</h4>
+                <div style="display:flex; gap:5px; margin-bottom:10px;">
+                    <input type="text" id="nuevo-prof-user" placeholder="Usuario" style="flex:1;">
+                    <input type="text" id="nuevo-prof-pass" placeholder="Clave" style="flex:1;">
+                    <input type="text" id="nuevo-prof-nom" placeholder="Nombre Real" style="flex:2;">
+                </div>
+                <div style="display:flex; gap:5px; margin-bottom:10px; align-items:stretch;">
+                    <div style="flex:1;">
+                        <label style="font-size:0.75rem; font-weight:bold;">Rol del Usuario:</label>
+                        <select id="nuevo-prof-rol" style="width:100%; height:42px; margin:0;" onchange="actualizarUIPermisosNuevo()">
+                            <option value="profesor">Profesor (Materia)</option>
+                            <option value="prefecto">Prefecto (Grupo Completo)</option>
+                            <option value="admin">Administrador (Total)</option>
+                        </select>
+                    </div>
+                    <div id="container-nuevo-permisos" style="flex:2;"></div>
+                    <button class="btn" style="background:var(--nav); height:42px; align-self:flex-end;" onclick="agregarProfesor()">Añadir Personal</button>
+                </div>
+                <button class="btn" onclick="cargarProfesoresAdmin()" style="width:100%; background:#777; margin-bottom:10px;">Cargar Lista de Personal</button>
+                <div id="admin-lista-profesores"></div>
+            </div>
+
+            <div class="admin-panel-section" style="border-left: 5px solid #8E44AD;">
+                <h4 style="color:#8E44AD;">📘 Asignar Materia a un Grupo (Crear Clase)</h4>
+                <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                    <select id="materia-grupo-origen" style="flex:1; min-width:150px;"><option value="">Selecciona grupo base...</option></select>
+                    <input type="text" id="materia-nueva" placeholder="Nueva Materia (ej. Biología)" style="flex:1; min-width:150px;">
+                    <button class="btn" style="background:#8E44AD; color:#FFF; flex:1; min-width:150px;" onclick="asignarMateriaAGrupo()">Crear Clase</button>
+                </div>
+            </div>
+
+            <div class="admin-panel-section" style="border-left: 5px solid var(--gr);">
+                <h4 style="color:var(--gr);">➕ Alta de Grupo Base (Lista desde Excel/Word)</h4>
+                <textarea id="nuevo-nombres-masivo" rows="6" placeholder="Pega aquí la lista..."></textarea>
+                <div style="display:flex; gap:5px; margin-bottom:5px;">
+                    <input type="text" id="nuevo-grupo" placeholder="Grupo (ej. 6A)" style="flex:1;">
+                    <input type="text" id="nuevo-materia" placeholder="Materia (Opcional)" style="flex:1;">
+                </div>
+                <select id="nuevo-modalidad">
+                    <option value="Ad lucem">Ad lucem</option><option value="360">360</option>
+                    <option value="Multicultural ingles - Intermedio">Multi. Inglés (Intermedio)</option>
+                    <option value="Multicultural ingles - Avanzado">Multi. Inglés (Avanzado)</option>
+                    <option value="Multicultural frances - Intermedio">Multi. Francés (Intermedio)</option>
+                    <option value="Multicultural frances - Avanzado">Multi. Francés (Avanzado)</option>
+                </select>
+                <button class="btn" style="background:var(--gr); width:100%; padding:12px;" onclick="agregarGrupoCompleto()">Crear Grupo Base</button>
+            </div>
+
+            <div class="admin-panel-section">
+                <h4>📋 Clonar Lista de Grupo Existente</h4>
+                <div style="display:flex; gap:5px;">
+                    <input type="text" id="grupo-origen" placeholder="De: 6A">
+                    <input type="text" id="grupo-destino" placeholder="A: TALLER6A">
+                    <button class="btn" style="background:var(--yw); color:#000;" onclick="copiarLista()">Clonar</button>
+                </div>
+            </div>
+
+            <div class="admin-panel-section">
+                <h4>✏️ Editar Grupo (Modalidades y Alumnos)</h4>
+                <select id="admin-grupo-select" onchange="cargarEstudiantesAdmin()"><option value="">Selecciona grupo...</option></select>
+                <div id="admin-bulk-actions" style="display:none; margin-top:10px; margin-bottom:15px;">
+                    <button class="btn" id="btn-guardar-grupo" style="background:var(--gr); width:100%; font-size:1.1rem; padding:12px; box-shadow: 0 4px 6px rgba(0,0,0,0.2);" onclick="guardarCambiosGrupo()">💾 Guardar Todos los Cambios del Grupo</button>
+                </div>
+                <div id="admin-lista-estudiantes"></div>
+            </div>
+            
+            <div class="admin-panel-section" style="border-left: 5px solid #007BFF;">
+                <h4 style="color:#007BFF;">🔄 Corrección Masiva</h4>
+                <div style="display:flex; gap:5px; flex-wrap:wrap;">
+                    <select id="admin-masivo-grupo-select" style="flex:1; min-width:150px;"><option value="">Selecciona grupo...</option></select>
+                    <input type="text" id="admin-masivo-nuevo-grupo" placeholder="Cambiar a Grupo..." style="flex:1; min-width:150px;">
+                    <input type="text" id="admin-masivo-materia" placeholder="Cambiar a Materia..." style="flex:1; min-width:150px;">
+                    <button class="btn" style="background:#007BFF; flex:1; min-width:150px;" onclick="actualizarGrupoMasivo()">Aplicar a todos</button>
+                </div>
+            </div>
+
+            <div class="admin-panel-section" style="border-left: 5px solid #D32F2F;">
+                <h4 style="color:#D32F2F;">⚠️ Peligro: Destruir Grupo Entero</h4>
+                <div style="display:flex; gap:5px;">
+                    <select id="admin-borrar-grupo-select"><option value="">Selecciona grupo...</option></select>
+                    <button class="btn" style="background:#D32F2F;" onclick="eliminarGrupoEntero()">Borrar Grupo</button>
+                </div>
+            </div>
         </div>
     </div>
-    <script src="app.js?v=25"></script>
+    <script src="app.js?v=28"></script>
     <script>if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }</script>
 </body>
 </html>

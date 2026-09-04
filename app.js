@@ -5,6 +5,7 @@ let historialCompleto = [];
 let reportesCompleto = [];
 let estudiantesEditando = [];
 let clasesGlobal = [];
+let timeoutIndicador;
 
 document.getElementById('grupo-select').addEventListener('change', cargarAlumnos);
 
@@ -26,6 +27,13 @@ async function login() {
     }
 }
 
+function parseModalidad(mod) {
+    if (!mod) return { base: 'General', nivel: '' };
+    if (mod.includes('Multicultural ingles')) return { base: 'Multicultural Inglés', nivel: '' };
+    if (mod.includes('Multicultural frances')) return { base: 'Multicultural Francés', nivel: '' };
+    return { base: mod, nivel: '' };
+}
+
 async function configurarAccesos() {
     const res = await fetch(`${API_URL}/grupos`);
     clasesGlobal = await res.json(); 
@@ -38,11 +46,7 @@ async function configurarAccesos() {
         const baseStr = `${c.grupo}|${c.materia||''}`;
         const fullStr = `${c.grupo}|${c.materia||''}|${c.seccion||''}`;
         
-        // El admin o prefecto ven todo el grupo unido, o si el profesor tiene asignado el grupo base.
-        if (currentUser.grupos === 'ALL' || permitidos.includes(c.grupo) || permitidos.includes(baseStr)) {
-            dropdownOptions.add(fullStr);
-        } else if (permitidos.includes(fullStr)) {
-            // El profesor tiene permiso específico solo para esta sección (ej. Avanzados)
+        if (currentUser.grupos === 'ALL' || permitidos.includes(c.grupo) || permitidos.includes(baseStr) || permitidos.includes(fullStr)) {
             dropdownOptions.add(fullStr);
         }
     });
@@ -68,6 +72,7 @@ async function configurarAccesos() {
     let opcionesAdmin = '<option value="">Selecciona un grupo...</option>' + todosLosGruposUnicos.map(g => `<option value="${g}">${g}</option>`).join('');
     
     document.getElementById('admin-grupo-select').innerHTML = opcionesAdmin;
+    document.getElementById('edicion-grupo-select').innerHTML = opcionesAdmin;
     if(document.getElementById('admin-borrar-grupo-select')) document.getElementById('admin-borrar-grupo-select').innerHTML = opcionesAdmin;
     if(document.getElementById('admin-masivo-grupo-select')) document.getElementById('admin-masivo-grupo-select').innerHTML = opcionesAdmin;
     if(document.getElementById('materia-grupo-origen')) document.getElementById('materia-grupo-origen').innerHTML = opcionesAdmin;
@@ -80,6 +85,7 @@ async function configurarAccesos() {
     }
     if (currentUser.rol === 'admin') {
         document.getElementById('btn-admin').style.display = 'block';
+        document.getElementById('btn-edicion').style.display = 'block';
         actualizarUIPermisosNuevo();
         cargarProfesoresAdmin();
     }
@@ -264,7 +270,7 @@ function renderizarTablaHistorial(datos) {
         tabla.innerHTML = '<thead><tr><th>Día</th><th>Fecha</th><th>Hora</th><th>Grupo</th><th>Materia</th><th>Sección</th><th>Modalidad</th><th>Nombre</th><th>Estado</th></tr></thead><tbody>' + 
         datos.map(r => {
             let color = r.estado === 'Presente' ? 'var(--gr)' : r.estado === 'Falta' ? '#D32F2F' : '#007BFF';
-            let bgFalta = r.estado === 'Falta' ? 'background-color:#FFCDD2;' : '';
+            let bgFalta = r.estado === 'Falta' ? 'background-color:#ffe6e6;' : '';
             return `<tr><td>${getDiaSemana(r.fecha)}</td><td>${r.fecha}</td><td>${r.hora || '-'}</td><td><strong>${r.grupo}</strong></td><td>${r.materia || 'General'}</td><td>${r.seccion || '-'}</td><td>${r.modalidad || 'Ad lucem'}</td><td><a href="#" onclick="verReporteEstudiante('${r.nombre}', 'historial'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.nombre}</a></td><td style="color:${color}; font-weight:bold; ${bgFalta}">${r.estado}</td></tr>`;
         }).join('') + '</tbody>';
     } else {
@@ -407,7 +413,91 @@ function imprimirPDFReportes() {
     html2pdf().set({ margin: 10, filename: `Reportes_Chemlist_${new Date().toISOString().split('T')[0]}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } }).from(elemento).save().then(() => titulo.style.display = 'none');
 }
 
-/* --- ADMIN --- */
+/* --- EDICIÓN EN TIEMPO REAL (NUEVA PESTAÑA) --- */
+async function cargarEdicionGrupo() {
+    const grupo = document.getElementById('edicion-grupo-select').value;
+    const container = document.getElementById('edicion-lista-estudiantes');
+    if(!grupo) { 
+        container.innerHTML = '<p style="text-align:center; padding:20px; color:#777;">Selecciona un grupo arriba para comenzar a editar.</p>'; 
+        return; 
+    }
+    
+    container.innerHTML = '<p style="text-align:center; padding:20px;">Cargando estudiantes...</p>';
+    const res = await fetch(`${API_URL}/estudiantes?grupo=${grupo}`);
+    const estudiantes = await res.json();
+    
+    if(estudiantes.length === 0) {
+        container.innerHTML = '<p style="text-align:center; padding:20px;">No hay alumnos en este grupo.</p>';
+        return;
+    }
+
+    let html = '<table style="width:100%; min-width:800px; border-collapse:collapse; font-size:0.9rem;">';
+    html += '<thead style="background:var(--nav); color:#fff;"><tr><th style="padding:10px;">Nombre</th><th style="padding:10px;">Modalidad</th><th style="padding:10px;">Materia</th><th style="padding:10px;">Sección</th><th style="padding:10px; text-align:center;">Acción</th></tr></thead><tbody>';
+    
+    estudiantes.forEach(e => {
+        const fallbackOption = ['Ad lucem','360','Multicultural Inglés','Multicultural Francés'].includes(e.modalidad) ? '' : `<option value="${e.modalidad}" selected>${e.modalidad}</option>`;
+        html += `<tr style="border-bottom:1px solid #ddd; transition: background-color 0.3s;" id="row_${e.id}">
+            <td style="padding:5px;"><input type="text" id="envivo_nom_${e.id}" value="${e.nombre}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid #ccc; font-weight:bold; border-radius:4px; padding:8px;"></td>
+            <td style="padding:5px;">
+                <select id="envivo_mod_${e.id}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid var(--gr); color:var(--gr); font-weight:bold; border-radius:4px; padding:8px;">
+                    <option value="Ad lucem" ${e.modalidad==='Ad lucem'?'selected':''}>Ad lucem</option>
+                    <option value="360" ${e.modalidad==='360'?'selected':''}>360</option>
+                    <option value="Multicultural Inglés" ${e.modalidad==='Multicultural Inglés'?'selected':''}>Multi. Inglés</option>
+                    <option value="Multicultural Francés" ${e.modalidad==='Multicultural Francés'?'selected':''}>Multi. Francés</option>
+                    ${fallbackOption}
+                </select>
+            </td>
+            <td style="padding:5px;"><input type="text" id="envivo_mat_${e.id}" value="${e.materia || ''}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid #ccc; border-radius:4px; padding:8px;" placeholder="Materia"></td>
+            <td style="padding:5px;"><input type="text" id="envivo_sec_${e.id}" value="${e.seccion || ''}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid #ccc; border-radius:4px; padding:8px;" placeholder="Ej. Avanzados"></td>
+            <td style="padding:5px; text-align:center;">
+                <input type="hidden" id="envivo_gpo_${e.id}" value="${e.grupo}">
+                <button class="btn" style="background:#D32F2F; padding:8px;" onclick="eliminarEstudianteEnVivo(${e.id})" title="Eliminar alumno permanentemente">🗑️</button>
+            </td>
+        </tr>`;
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+async function guardarEstudianteEnVivo(id) {
+    const tr = document.getElementById(`row_${id}`);
+    tr.style.backgroundColor = '#eafaf1'; // Ilumina la fila de verde temporalmente
+    
+    const payload = {
+        id: id,
+        nombre: document.getElementById(`envivo_nom_${id}`).value,
+        grupo: document.getElementById(`envivo_gpo_${id}`).value, 
+        materia: document.getElementById(`envivo_mat_${id}`).value,
+        seccion: document.getElementById(`envivo_sec_${id}`).value,
+        modalidad: document.getElementById(`envivo_mod_${id}`).value
+    };
+    
+    await fetch(`${API_URL}/admin/estudiante`, { method: 'PUT', body: JSON.stringify(payload) });
+    
+    // Muestra la alerta global verde
+    const ind = document.getElementById('edicion-indicador');
+    ind.style.display = 'block';
+    ind.style.opacity = '1';
+    
+    clearTimeout(timeoutIndicador);
+    timeoutIndicador = setTimeout(() => {
+        ind.style.opacity = '0';
+        setTimeout(() => {
+            ind.style.display = 'none';
+            tr.style.backgroundColor = 'transparent';
+        }, 500);
+    }, 2000);
+    
+    configurarAccesos(); 
+}
+
+async function eliminarEstudianteEnVivo(id) {
+    if(!confirm('⚠️ ¿Estás seguro de que quieres eliminar a este alumno de forma permanente?')) return;
+    await fetch(`${API_URL}/admin/estudiante`, { method: 'DELETE', body: JSON.stringify({ id }) });
+    cargarEdicionGrupo(); 
+}
+
+/* --- ADMIN MAESTRO --- */
 function generarHTMLPermisos(id, rol, valoresStr) {
     if(rol === 'admin') return `<div style="display:flex; align-items:center; height:100%;"><input type="hidden" id="${id}" value="ALL"><span style="width:100%; padding:10px; background:#eafaf1; border-radius:8px; color:var(--gr); font-weight:bold; text-align:center;">✅ Acceso Total (Admin)</span></div>`;
     const valoresArray = valoresStr ? valoresStr.split(',') : [];
@@ -433,7 +523,7 @@ function generarHTMLPermisos(id, rol, valoresStr) {
         if(rol === 'profesor') {
             const parts = opt.split('|');
             if(parts.length === 3 && parts[2]) {
-                labelOpt = `${parts[0]} - ${parts[1]||'Gral'} (Sec: ${parts[2]})`;
+                labelOpt = `${parts[0]} - ${parts[1]} (Sec: ${parts[2]})`;
             } else {
                 labelOpt = `${parts[0]} - ${parts[1]||'Gral'} (Toda la clase)`;
             }
@@ -536,6 +626,7 @@ async function eliminarGrupoEntero() {
     }
 }
 
+// Función legada de edición manual agrupada (Mantenida por compatibilidad en la pestaña Admin)
 async function cargarEstudiantesAdmin() {
     const grupo = document.getElementById('admin-grupo-select').value;
     const bulkDiv = document.getElementById('admin-bulk-actions');
@@ -638,10 +729,7 @@ async function cargarProfesoresAdmin() {
 }
 
 async function editarProfesor(id) {
-    const username = document.getElementById(`edit_prof_user_${id}`).value;
-    const password = document.getElementById(`edit_prof_pass_${id}`).value;
-    const nombre = document.getElementById(`edit_prof_nom_${id}`).value;
-    const rol = document.getElementById(`edit_prof_rol_${id}`).value;
+    const username = document.getElementById(`edit_prof_user_${id}`).value, password = document.getElementById(`edit_prof_pass_${id}`).value, nombre = document.getElementById(`edit_prof_nom_${id}`).value, rol = document.getElementById(`edit_prof_rol_${id}`).value;
     const grupos = getPermisosValues(`edit_prof_grupos_${id}`, rol);
     
     if(!grupos && rol !== 'admin') return alert('Debes seleccionar al menos un permiso marcando las casillas.');
@@ -658,10 +746,7 @@ async function eliminarProfesor(id) {
 }
 
 async function agregarProfesor() {
-    const username = document.getElementById('nuevo-prof-user').value;
-    const password = document.getElementById('nuevo-prof-pass').value;
-    const nombre = document.getElementById('nuevo-prof-nom').value;
-    const rol = document.getElementById('nuevo-prof-rol').value;
+    const username = document.getElementById('nuevo-prof-user').value, password = document.getElementById('nuevo-prof-pass').value, nombre = document.getElementById('nuevo-prof-nom').value, rol = document.getElementById('nuevo-prof-rol').value;
     const grupos = getPermisosValues('nuevo-prof-grupos', rol);
     
     if(!username || !password) return alert('Usuario y clave obligatorios');

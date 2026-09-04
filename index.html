@@ -39,7 +39,6 @@
     </style>
 </head>
 <body>
-    <!-- Pantalla de Login -->
     <div id="login-screen" class="container login-container">
         <img src="logo.png" style="height: 100px; border-radius: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); margin-bottom: 20px;">
         <h2>Chemlist</h2>
@@ -48,7 +47,6 @@
         <button class="btn btn-save" onclick="login()">Entrar</button>
     </div>
 
-    <!-- Pantalla de la Aplicación -->
     <div id="app-screen" class="container" style="display:none;">
         <header>
             <img src="logo.png" style="height: 60px; border-radius: 10px; margin-bottom: 10px;">
@@ -56,11 +54,11 @@
             <p><span id="profesor-nombre"></span></p>
         </header>
         
-        <!-- Pestañas de Navegación -->
         <div class="tabs">
             <button class="tab-btn active" onclick="showTab('lista', this)">📝 Lista</button>
             <button class="tab-btn" id="btn-historial" onclick="showTab('historial', this)" style="display:none;">📊 Asistencias</button>
             <button class="tab-btn" id="btn-reportes" onclick="showTab('reportes', this)" style="display:none;">🚨 Reportes</button>
+            <button class="tab-btn" id="btn-edicion" onclick="showTab('edicion', this)" style="display:none;">🛠️ Edición</button>
             <button class="tab-btn" id="btn-admin" onclick="showTab('admin-panel', this)" style="display:none;">⚙️ Admin</button>
         </div>
 
@@ -151,7 +149,26 @@
             </div>
         </div>
 
-        <!-- Pestaña 4: Panel de Administrador -->
+        <!-- Pestaña 4: NUEVA EDICIÓN EN TIEMPO REAL -->
+        <div id="edicion" class="tab-content">
+            <h3 style="margin-bottom:15px; color:var(--nav);">✏️ Edición de Grupo en Tiempo Real</h3>
+            <p style="font-size:0.85rem; margin-bottom:15px; color:#555;">Selecciona un grupo base. Aquí verás a <b>todos</b> los estudiantes de ese grupo, las materias que cursan, sus modalidades y secciones. Cualquier cambio que escribas se guardará <b>automáticamente</b> en la nube.</p>
+
+            <div style="display:flex; gap:10px; margin-bottom:15px; align-items:center;">
+                <select id="edicion-grupo-select" onchange="cargarEdicionGrupo()" style="flex:2; font-size:1.05rem; padding:10px; margin:0;"><option value="">Cargando grupos...</option></select>
+                <button class="btn" style="background:#007BFF; flex:1; margin:0; height:100%;" onclick="cargarEdicionGrupo()">🔄 Recargar Lista</button>
+            </div>
+
+            <div id="edicion-indicador" style="display:none; background:#d4edda; color:#155724; padding:10px; border-radius:8px; border:1px solid #c3e6cb; margin-bottom:15px; font-weight:bold; text-align:center; transition: opacity 0.5s;">
+                ✅ Cambio guardado en la nube correctamente
+            </div>
+
+            <div id="edicion-lista-estudiantes" style="overflow-x:auto; background:#fff; border-radius:8px; border:1px solid #ddd; padding:0;">
+                <p style="text-align:center; padding:20px; color:#777;">Selecciona un grupo arriba para comenzar a editar.</p>
+            </div>
+        </div>
+
+        <!-- Pestaña 5: Panel de Administrador Maestro -->
         <div id="admin-panel" class="tab-content">
             <h3 style="margin-bottom:15px; color:var(--nav);">Control Maestro</h3>
             
@@ -216,15 +233,6 @@
                 </div>
             </div>
 
-            <div class="admin-panel-section">
-                <h4>✏️ Editar Grupo (Modalidades, Secciones y Alumnos)</h4>
-                <select id="admin-grupo-select" onchange="cargarEstudiantesAdmin()"><option value="">Selecciona grupo...</option></select>
-                <div id="admin-bulk-actions" style="display:none; margin-top:10px; margin-bottom:15px;">
-                    <button class="btn" id="btn-guardar-grupo" style="background:var(--gr); width:100%; font-size:1.1rem; padding:12px; box-shadow: 0 4px 6px rgba(0,0,0,0.2);" onclick="guardarCambiosGrupo()">💾 Guardar Todos los Cambios del Grupo</button>
-                </div>
-                <div id="admin-lista-estudiantes"></div>
-            </div>
-            
             <div class="admin-panel-section" style="border-left: 5px solid #007BFF;">
                 <h4 style="color:#007BFF;">🔄 Corrección Masiva (Renombrar Grupos)</h4>
                 <div style="display:flex; gap:5px; flex-wrap:wrap;">
@@ -246,7 +254,7 @@
         </div>
     </div>
     
-    <script src="app.js?v=35"></script>
+    <script src="app.js?v=36"></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').then(() => console.log("Service Worker Registrado."));

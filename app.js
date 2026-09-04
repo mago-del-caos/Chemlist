@@ -267,6 +267,7 @@ function renderizarTablaHistorial(datos) {
     const tabla = document.getElementById('tabla-historial');
     
     if(vista === 'lista') {
+        // Vista de lista detallada original
         tabla.innerHTML = '<thead><tr><th>Día</th><th>Fecha</th><th>Hora</th><th>Grupo</th><th>Materia</th><th>Sección</th><th>Modalidad</th><th>Nombre</th><th>Estado</th></tr></thead><tbody>' + 
         datos.map(r => {
             let color = r.estado === 'Presente' ? 'var(--gr)' : r.estado === 'Falta' ? '#D32F2F' : '#007BFF';
@@ -274,62 +275,81 @@ function renderizarTablaHistorial(datos) {
             return `<tr><td>${getDiaSemana(r.fecha)}</td><td>${r.fecha}</td><td>${r.hora || '-'}</td><td><strong>${r.grupo}</strong></td><td>${r.materia || 'General'}</td><td>${r.seccion || '-'}</td><td>${r.modalidad || 'Ad lucem'}</td><td><a href="#" onclick="verReporteEstudiante('${r.nombre}', 'historial'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.nombre}</a></td><td style="color:${color}; font-weight:bold; ${bgFalta}">${r.estado}</td></tr>`;
         }).join('') + '</tbody>';
     } else {
+        // NUEVA MATRIZ PLANA Y UNIVERSAL
         if(datos.length === 0) {
             tabla.innerHTML = '<tbody><tr><td style="text-align:center; padding:20px;">No hay datos en este rango.</td></tr></tbody>';
             return;
         }
         
-        let columnasHora = [...new Set(datos.map(r => `${r.fecha} | ${r.hora||'Sin hora'}`))];
+        let columnasHora = [...new Set(datos.map(r => r.hora||'Sin hora'))];
         columnasHora.sort((a, b) => {
-            let aPad = a.replace(/\| (\d):/, '| 0$1:');
-            let bPad = b.replace(/\| (\d):/, '| 0$1:');
+            let aPad = a.replace(/^(\d):/, '0$1:');
+            let bPad = b.replace(/^(\d):/, '0$1:');
             return aPad.localeCompare(bPad);
         });
         
-        let alumnosMap = {};
+        let rowMap = {};
         datos.forEach(r => {
-            let mod = r.modalidad || 'General';
-            let nom = r.nombre;
-            if (r.seccion) nom += ` <span style="font-size:0.75rem; color:#8E44AD;">[Sec: ${r.seccion}]</span>`;
+            // Agrupamos por Fecha + Nombre de Estudiante
+            let key = `${r.fecha}|${r.nombre}`;
+            if(!rowMap[key]) {
+                rowMap[key] = {
+                    fecha: r.fecha,
+                    diaStr: getDiaSemana(r.fecha),
+                    nombre: r.nombre,
+                    modalidad: r.modalidad || 'Ad lucem',
+                    seccion: r.seccion || '-',
+                    asistencias: {}
+                };
+            }
             
-            if(!alumnosMap[mod]) alumnosMap[mod] = {};
-            if(!alumnosMap[mod][nom]) alumnosMap[mod][nom] = {};
-            
-            let colKey = `${r.fecha} | ${r.hora||'Sin hora'}`;
             let estadoCorto = r.estado === 'Presente' ? 'P' : r.estado === 'Falta' ? 'F' : 'J';
             let colorText = r.estado === 'Presente' ? 'var(--gr)' : r.estado === 'Falta' ? '#D32F2F' : '#007BFF';
             let bgFalta = r.estado === 'Falta' ? '#FFCDD2' : ''; 
-            alumnosMap[mod][nom][colKey] = { estado: estadoCorto, colorText: colorText, bgFalta: bgFalta, materia: r.materia || 'Gral' };
+            
+            rowMap[key].asistencias[r.hora||'Sin hora'] = { 
+                estado: estadoCorto, 
+                colorText: colorText, 
+                bgFalta: bgFalta, 
+                materia: r.materia || 'Gral' 
+            };
         });
 
-        let html = '<thead><tr><th style="min-width:180px; background:var(--nav); color:#fff; border:1px solid #ccc;">Estudiante</th>';
-        columnasHora.forEach(c => { 
-            let parts = c.split(' | ');
-            let dia = getDiaSemana(parts[0]);
-            html += `<th style="text-align:center; background:var(--nav); color:#fff; font-size:0.8rem; border:1px solid #ccc;">${dia}<br>${parts[0]}<br>${parts[1]}</th>`; 
+        // ENCABEZADOS PERFECTAMENTE PLANOS
+        let html = '<thead><tr>';
+        html += `<th style="background:var(--nav); color:#fff; border:1px solid #ccc; padding:10px; min-width:100px; text-align:center;">Día</th>`;
+        html += `<th style="background:var(--nav); color:#fff; border:1px solid #ccc; padding:10px; min-width:180px;">Estudiante</th>`;
+        html += `<th style="background:var(--nav); color:#fff; border:1px solid #ccc; padding:10px; text-align:center;">Modalidad</th>`;
+        html += `<th style="background:var(--nav); color:#fff; border:1px solid #ccc; padding:10px; text-align:center;">Sección</th>`;
+        
+        columnasHora.forEach(h => { 
+            html += `<th style="text-align:center; background:var(--nav); color:#fff; font-size:0.85rem; border:1px solid #ccc; padding:10px; min-width:80px;">${h}</th>`; 
         });
         html += '</tr></thead><tbody>';
 
-        let modalidades = Object.keys(alumnosMap).sort();
-        modalidades.forEach(mod => {
-            html += `<tr><td colspan="${columnasHora.length + 1}" style="background:#eafaf1; color:var(--gr); font-weight:bold; text-align:center; font-size:1.1rem; border:1px solid #ccc;">🏫 ${mod}</td></tr>`;
-            let estudiantes = Object.keys(alumnosMap[mod]).sort();
-            estudiantes.forEach(est => {
-                html += `<tr><td style="border:1px solid #ccc;"><strong>${est}</strong></td>`;
-                columnasHora.forEach(col => {
-                    let cell = alumnosMap[mod][est][col];
-                    if(cell) {
-                        let bgStyle = cell.bgFalta ? `background-color:${cell.bgFalta};` : '';
-                        html += `<td style="text-align:center; vertical-align:middle; border:1px solid #ccc; ${bgStyle}">
-                            <span style="color:${cell.colorText}; font-weight:bold; font-size:1.1rem;">${cell.estado}</span><br>
-                            <span style="font-size:0.7rem; color:#666; white-space:nowrap;">${cell.materia}</span>
-                        </td>`;
-                    } else {
-                        html += `<td style="text-align:center; vertical-align:middle; border:1px solid #ccc; background-color:#f9f9f9;">-</td>`;
-                    }
-                });
-                html += '</tr>';
+        let sortedKeys = Object.keys(rowMap).sort((a, b) => a.localeCompare(b));
+        
+        sortedKeys.forEach(k => {
+            let row = rowMap[k];
+            html += `<tr>`;
+            html += `<td style="border:1px solid #ccc; text-align:center; vertical-align:middle;"><strong>${row.diaStr}</strong><br><span style="font-size:0.75rem; color:#666;">${row.fecha}</span></td>`;
+            html += `<td style="border:1px solid #ccc; vertical-align:middle;"><strong>${row.nombre}</strong></td>`;
+            html += `<td style="border:1px solid #ccc; text-align:center; vertical-align:middle;">${row.modalidad}</td>`;
+            html += `<td style="border:1px solid #ccc; text-align:center; vertical-align:middle; color:#8E44AD; font-weight:bold;">${row.seccion}</td>`;
+            
+            columnasHora.forEach(h => {
+                let cell = row.asistencias[h];
+                if(cell) {
+                    let bgStyle = cell.bgFalta ? `background-color:${cell.bgFalta};` : '';
+                    html += `<td style="text-align:center; vertical-align:middle; border:1px solid #ccc; ${bgStyle}">
+                        <span style="color:${cell.colorText}; font-weight:bold; font-size:1.1rem;">${cell.estado}</span><br>
+                        <span style="font-size:0.7rem; color:#666; white-space:nowrap;">${cell.materia}</span>
+                    </td>`;
+                } else {
+                    html += `<td style="text-align:center; vertical-align:middle; border:1px solid #ccc; background-color:#f9f9f9; color:#aaa;">-</td>`;
+                }
             });
+            html += `</tr>`;
         });
         html += '</tbody>';
         tabla.innerHTML = html;
@@ -342,6 +362,8 @@ function imprimirExcel() {
     if(!tabla || tabla.rows.length === 0) return alert('No hay datos para exportar.');
 
     let clone = tabla.cloneNode(true);
+    let colCount = clone.rows[0].cells.length;
+
     const links = clone.querySelectorAll('a');
     links.forEach(a => { const span = document.createElement('span'); span.innerText = a.innerText; a.parentNode.replaceChild(span, a); });
     
@@ -350,6 +372,7 @@ function imprimirExcel() {
         c.style.border = '1px solid #000000';
         c.style.verticalAlign = 'middle';
         c.style.textAlign = 'center';
+        
         if (c.style.backgroundColor) {
             c.setAttribute('bgcolor', c.style.backgroundColor);
         } else if (c.innerHTML.includes('>F<') || c.innerHTML.includes('Falta')) {
@@ -359,7 +382,37 @@ function imprimirExcel() {
         c.innerHTML = c.innerHTML.replace(/<br\s*[\/]?>/gi, ' | ');
     });
 
-    let html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="UTF-8"><style>table { border-collapse: collapse; font-family: Arial, sans-serif; } th, td { border: 1px solid black; padding: 5px; } th { background-color: #003366; color: white; font-weight: bold; }</style></head><body><table>${clone.innerHTML}</table></body></html>`;
+    // CÓDIGO XML PARA ACTIVAR AUTO-FILTROS EN EXCEL
+    let xmlData = `
+    <xml>
+     <x:ExcelWorkbook>
+      <x:ExcelWorksheets>
+       <x:ExcelWorksheet>
+        <x:Name>Asistencias</x:Name>
+        <x:WorksheetOptions>
+         <x:AutoFilter xmlns="urn:schemas-microsoft-com:office:excel">
+          <x:Range>R1C1:R1C${colCount}</x:Range>
+         </x:AutoFilter>
+        </x:WorksheetOptions>
+       </x:ExcelWorksheet>
+      </x:ExcelWorksheets>
+     </x:ExcelWorkbook>
+    </xml>`;
+
+    let html = `
+    <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+        <meta charset="UTF-8">
+        <!--[if gte mso 9]>${xmlData}<![endif]-->
+        <style>
+            table { border-collapse: collapse; font-family: Arial, sans-serif; } 
+            th, td { border: 1px solid black; padding: 5px; } 
+            th { background-color: #003366; color: white; font-weight: bold; }
+        </style>
+    </head>
+    <body><table>${clone.innerHTML}</table></body>
+    </html>`;
+    
     const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -413,7 +466,7 @@ function imprimirPDFReportes() {
     html2pdf().set({ margin: 10, filename: `Reportes_Chemlist_${new Date().toISOString().split('T')[0]}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } }).from(elemento).save().then(() => titulo.style.display = 'none');
 }
 
-/* --- EDICIÓN EN TIEMPO REAL (NUEVA PESTAÑA) --- */
+/* --- EDICIÓN EN TIEMPO REAL --- */
 async function cargarEdicionGrupo() {
     const grupo = document.getElementById('edicion-grupo-select').value;
     const container = document.getElementById('edicion-lista-estudiantes');
@@ -461,7 +514,7 @@ async function cargarEdicionGrupo() {
 
 async function guardarEstudianteEnVivo(id) {
     const tr = document.getElementById(`row_${id}`);
-    tr.style.backgroundColor = '#eafaf1'; // Ilumina la fila de verde temporalmente
+    tr.style.backgroundColor = '#eafaf1'; 
     
     const payload = {
         id: id,
@@ -474,7 +527,6 @@ async function guardarEstudianteEnVivo(id) {
     
     await fetch(`${API_URL}/admin/estudiante`, { method: 'PUT', body: JSON.stringify(payload) });
     
-    // Muestra la alerta global verde
     const ind = document.getElementById('edicion-indicador');
     ind.style.display = 'block';
     ind.style.opacity = '1';
@@ -626,7 +678,6 @@ async function eliminarGrupoEntero() {
     }
 }
 
-// Función legada de edición manual agrupada (Mantenida por compatibilidad en la pestaña Admin)
 async function cargarEstudiantesAdmin() {
     const grupo = document.getElementById('admin-grupo-select').value;
     const bulkDiv = document.getElementById('admin-bulk-actions');

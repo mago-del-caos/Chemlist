@@ -267,7 +267,6 @@ function renderizarTablaHistorial(datos) {
     const tabla = document.getElementById('tabla-historial');
     
     if(vista === 'lista') {
-        // Vista de lista detallada original
         tabla.innerHTML = '<thead><tr><th>Día</th><th>Fecha</th><th>Hora</th><th>Grupo</th><th>Materia</th><th>Sección</th><th>Modalidad</th><th>Nombre</th><th>Estado</th></tr></thead><tbody>' + 
         datos.map(r => {
             let color = r.estado === 'Presente' ? 'var(--gr)' : r.estado === 'Falta' ? '#D32F2F' : '#007BFF';
@@ -275,7 +274,6 @@ function renderizarTablaHistorial(datos) {
             return `<tr><td>${getDiaSemana(r.fecha)}</td><td>${r.fecha}</td><td>${r.hora || '-'}</td><td><strong>${r.grupo}</strong></td><td>${r.materia || 'General'}</td><td>${r.seccion || '-'}</td><td>${r.modalidad || 'Ad lucem'}</td><td><a href="#" onclick="verReporteEstudiante('${r.nombre}', 'historial'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.nombre}</a></td><td style="color:${color}; font-weight:bold; ${bgFalta}">${r.estado}</td></tr>`;
         }).join('') + '</tbody>';
     } else {
-        // NUEVA MATRIZ PLANA Y UNIVERSAL
         if(datos.length === 0) {
             tabla.innerHTML = '<tbody><tr><td style="text-align:center; padding:20px;">No hay datos en este rango.</td></tr></tbody>';
             return;
@@ -290,7 +288,6 @@ function renderizarTablaHistorial(datos) {
         
         let rowMap = {};
         datos.forEach(r => {
-            // Agrupamos por Fecha + Nombre de Estudiante
             let key = `${r.fecha}|${r.nombre}`;
             if(!rowMap[key]) {
                 rowMap[key] = {
@@ -315,7 +312,6 @@ function renderizarTablaHistorial(datos) {
             };
         });
 
-        // ENCABEZADOS PERFECTAMENTE PLANOS
         let html = '<thead><tr>';
         html += `<th style="background:var(--nav); color:#fff; border:1px solid #ccc; padding:10px; min-width:100px; text-align:center;">Día</th>`;
         html += `<th style="background:var(--nav); color:#fff; border:1px solid #ccc; padding:10px; min-width:180px;">Estudiante</th>`;
@@ -382,7 +378,6 @@ function imprimirExcel() {
         c.innerHTML = c.innerHTML.replace(/<br\s*[\/]?>/gi, ' | ');
     });
 
-    // CÓDIGO XML PARA ACTIVAR AUTO-FILTROS EN EXCEL
     let xmlData = `
     <xml>
      <x:ExcelWorkbook>
@@ -676,78 +671,6 @@ async function eliminarGrupoEntero() {
     } else {
         alert("Cancelado.");
     }
-}
-
-async function cargarEstudiantesAdmin() {
-    const grupo = document.getElementById('admin-grupo-select').value;
-    const bulkDiv = document.getElementById('admin-bulk-actions');
-    if(!grupo) { bulkDiv.style.display = 'none'; document.getElementById('admin-lista-estudiantes').innerHTML = ''; return; }
-    const res = await fetch(`${API_URL}/estudiantes?grupo=${grupo}`);
-    const estudiantes = await res.json();
-    estudiantesEditando = estudiantes.map(e => e.id);
-    bulkDiv.style.display = estudiantes.length > 0 ? 'block' : 'none';
-
-    document.getElementById('admin-lista-estudiantes').innerHTML = estudiantes.map(e => {
-        const fallbackOption = ['Ad lucem','360','Multicultural Inglés','Multicultural Francés'].includes(e.modalidad) ? '' : `<option value="${e.modalidad}" selected>${e.modalidad}</option>`;
-        return `
-        <div style="background:#fff; padding:15px; border-radius:8px; margin-bottom:10px; border:1px solid #ccc; box-shadow:0 2px 4px rgba(0,0,0,0.05);">
-            <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
-                <input type="text" id="edit_nom_${e.id}" value="${e.nombre}" style="flex:2; margin:0; font-weight:bold;" placeholder="Nombre">
-                <select id="edit_mod_${e.id}" style="flex:1; margin:0; border:2px solid var(--gr); color:var(--gr); font-weight:bold; font-size:0.75rem;">
-                    <option value="Ad lucem" ${e.modalidad==='Ad lucem'?'selected':''}>Ad lucem</option>
-                    <option value="360" ${e.modalidad==='360'?'selected':''}>360</option>
-                    <option value="Multicultural Inglés" ${e.modalidad==='Multicultural Inglés'?'selected':''}>Multicultural Inglés</option>
-                    <option value="Multicultural Francés" ${e.modalidad==='Multicultural Francés'?'selected':''}>Multicultural Francés</option>
-                    ${fallbackOption}
-                </select>
-            </div>
-            <div style="display:flex; gap:10px;">
-                <input type="text" id="edit_gpo_${e.id}" value="${e.grupo}" style="flex:1; margin:0;" placeholder="Grupo">
-                <input type="text" id="edit_mat_${e.id}" value="${e.materia || ''}" style="flex:1; margin:0;" placeholder="Materia">
-                <input type="text" id="edit_sec_${e.id}" value="${e.seccion || ''}" style="flex:1; margin:0;" placeholder="Sección (Opcional)">
-                <button class="btn" style="background:#FFC107; color:#000; padding:10px;" onclick="editarEstudiante(${e.id})">💾</button>
-                <button class="btn" style="background:#D32F2F; padding:10px;" onclick="eliminarEstudiante(${e.id})">🗑️</button>
-            </div>
-        </div>`
-    }).join('');
-}
-
-async function guardarCambiosGrupo() {
-    if(!estudiantesEditando || estudiantesEditando.length === 0) return;
-    const btn = document.getElementById('btn-guardar-grupo');
-    btn.innerText = '⏳ Guardando...';
-    const payload = estudiantesEditando.map(id => ({ 
-        id: id, 
-        nombre: document.getElementById(`edit_nom_${id}`).value, 
-        grupo: document.getElementById(`edit_gpo_${id}`).value, 
-        materia: document.getElementById(`edit_mat_${id}`).value, 
-        seccion: document.getElementById(`edit_sec_${id}`).value,
-        modalidad: document.getElementById(`edit_mod_${id}`).value
-    }));
-    await fetch(`${API_URL}/admin/estudiantes-batch`, { method: 'PUT', body: JSON.stringify(payload) });
-    btn.innerText = '💾 Guardar Todos los Cambios del Grupo';
-    alert('✅ ¡Se han guardado las modalidades, secciones y datos!');
-    cargarEstudiantesAdmin(); 
-}
-
-async function editarEstudiante(id) {
-    const payload = {
-        id: id,
-        nombre: document.getElementById(`edit_nom_${id}`).value,
-        grupo: document.getElementById(`edit_gpo_${id}`).value,
-        materia: document.getElementById(`edit_mat_${id}`).value,
-        seccion: document.getElementById(`edit_sec_${id}`).value,
-        modalidad: document.getElementById(`edit_mod_${id}`).value
-    };
-    await fetch(`${API_URL}/admin/estudiante`, { method: 'PUT', body: JSON.stringify(payload) });
-    alert('Alumno actualizado.'); 
-    configurarAccesos();
-}
-
-async function eliminarEstudiante(id) {
-    if(!confirm('¿Eliminar alumno?')) return;
-    await fetch(`${API_URL}/admin/estudiante`, { method: 'DELETE', body: JSON.stringify({ id }) });
-    cargarEstudiantesAdmin();
 }
 
 async function cargarProfesoresAdmin() {

@@ -1,4 +1,4 @@
-const APP_VERSION = "v46 - Edición Masiva de Materias";
+const APP_VERSION = "v47 - Sincronización Anti-Caché";
 console.log("Iniciando Chemlist: " + APP_VERSION);
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -34,7 +34,11 @@ async function login() {
         document.getElementById('app-screen').style.display = 'block';
         document.getElementById('profesor-nombre').innerText = currentUser.nombre;
         document.getElementById('user-role').innerText = currentUser.rol.toUpperCase();
-        document.getElementById('fecha').valueAsDate = new Date();
+        
+        // Ajuste preciso de la fecha local
+        const d = new Date();
+        document.getElementById('fecha').value = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
+        
         configurarAccesos();
     } else { 
         alert("Credenciales incorrectas"); 
@@ -59,7 +63,7 @@ async function configurarAccesos() {
     }
 
     try {
-        const res = await fetch(`${API_URL}/grupos`);
+        const res = await fetch(`${API_URL}/grupos?t=${Date.now()}`);
         clasesGlobal = await res.json(); 
         
         let htmlSelect = '<option value="">Selecciona la clase...</option>';
@@ -176,6 +180,7 @@ async function cargarAlumnos() {
     let url = `${API_URL}/estudiantes?grupo=${grupo}`;
     if(materia) url += `&materia=${materia}`;
     if(seccion) url += `&seccion=${seccion}`;
+    url += `&t=${Date.now()}`;
     
     const res = await fetch(url);
     alumnosGrupo = await res.json();
@@ -235,9 +240,17 @@ async function guardarAsistencia() {
     if (!hora) return alert("⚠️ Por favor selecciona la hora de la clase antes de guardar.");
 
     const asistencias = alumnosGrupo.map(a => ({ estudiante_id: a.id, estado: document.querySelector(`input[name="est_${a.id}"]:checked`).value }));
-    await fetch(`${API_URL}/asistencia`, { method: 'POST', body: JSON.stringify({ fecha, hora, asistencias }) });
-    alert('✅ Asistencia registrada en la nube por hora.');
-    cargarHistorial();
+    try {
+        const res = await fetch(`${API_URL}/asistencia`, { method: 'POST', body: JSON.stringify({ fecha, hora, asistencias }) });
+        if(res.ok) {
+            alert('✅ Asistencia registrada en la nube por hora.');
+            cargarHistorial();
+        } else {
+            alert('❌ Error de Cloudflare: No se pudo guardar. Intenta de nuevo.');
+        }
+    } catch(err) {
+        alert('❌ Error de conexión: ' + err.message);
+    }
 }
 
 function toggleMaterias(origen) {
@@ -258,7 +271,7 @@ function getDiaSemana(fechaStr) {
 
 async function cargarHistorial() {
     try {
-        const res = await fetch(`${API_URL}/asistencia-historial`);
+        const res = await fetch(`${API_URL}/asistencia-historial?t=${Date.now()}`);
         let data = await res.json();
         if (currentUser.rol === 'profesor') {
             const perms = (currentUser.grupos || '').split(',');
@@ -453,7 +466,7 @@ function imprimirPDF() {
 
 async function cargarReportes() {
     try {
-        const res = await fetch(`${API_URL}/reportes`);
+        const res = await fetch(`${API_URL}/reportes?t=${Date.now()}`);
         let data = await res.json();
         if (currentUser.rol === 'profesor') {
             const perms = (currentUser.grupos || '').split(',');
@@ -512,7 +525,7 @@ async function cargarEdicionGrupo() {
     
     container.innerHTML = '<p style="text-align:center; padding:20px;">Cargando estudiantes...</p>';
     try {
-        const res = await fetch(`${API_URL}/estudiantes?grupo=${grupo}`);
+        const res = await fetch(`${API_URL}/estudiantes?grupo=${grupo}&t=${Date.now()}`);
         const estudiantes = await res.json();
         
         if(estudiantes.length === 0) {
@@ -612,7 +625,6 @@ async function eliminarEstudianteEnVivo(id) {
     cargarEdicionGrupo(); 
 }
 
-// NUEVA FUNCIÓN: Asignar MATERIA a todos de golpe en la pestaña Edición
 async function asignarMateriaMasivaEnEdicion() {
     const grupo = document.getElementById('edicion-grupo-select').value;
     const materia = document.getElementById('edicion-masiva-materia').value.trim();
@@ -781,7 +793,7 @@ async function eliminarGrupoEntero() {
 
 async function cargarProfesoresAdmin() {
     try {
-        const res = await fetch(`${API_URL}/admin/profesores`);
+        const res = await fetch(`${API_URL}/admin/profesores?t=${Date.now()}`);
         const profes = await res.json();
         const lista = document.getElementById('admin-lista-profesores');
         if(!lista) return;

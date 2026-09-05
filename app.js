@@ -1,4 +1,4 @@
-const APP_VERSION = "v48 - Agrupación por Secciones";
+const APP_VERSION = "v49 - Sincronización de Secciones";
 console.log("Iniciando Chemlist: " + APP_VERSION);
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -17,7 +17,6 @@ let currentUser = null;
 let alumnosGrupo = [];
 let historialCompleto = [];
 let reportesCompleto = [];
-let estudiantesEditando = [];
 let clasesGlobal = [];
 let timeoutIndicador;
 
@@ -42,13 +41,6 @@ async function login() {
     } else { 
         alert("Credenciales incorrectas"); 
     }
-}
-
-function parseModalidad(mod) {
-    if (!mod) return { base: 'General', nivel: '' };
-    if (mod.includes('Multicultural ingles')) return { base: 'Multicultural Inglés', nivel: '' };
-    if (mod.includes('Multicultural frances')) return { base: 'Multicultural Francés', nivel: '' };
-    return { base: mod, nivel: '' };
 }
 
 async function configurarAccesos() {
@@ -99,10 +91,19 @@ async function configurarAccesos() {
         let opcionesAdmin = '<option value="">Selecciona un grupo...</option>' + todosLosGruposUnicos.map(g => `<option value="${g}">${g}</option>`).join('');
         
         if(document.getElementById('admin-grupo-select')) document.getElementById('admin-grupo-select').innerHTML = opcionesAdmin;
-        if(document.getElementById('edicion-grupo-select')) document.getElementById('edicion-grupo-select').innerHTML = opcionesAdmin;
         if(document.getElementById('admin-borrar-grupo-select')) document.getElementById('admin-borrar-grupo-select').innerHTML = opcionesAdmin;
         if(document.getElementById('admin-masivo-grupo-select')) document.getElementById('admin-masivo-grupo-select').innerHTML = opcionesAdmin;
         if(document.getElementById('materia-grupo-origen')) document.getElementById('materia-grupo-origen').innerHTML = opcionesAdmin;
+
+        // NUEVO: El select de Edición ahora incluye la materia para no mezclar alumnos
+        let opcionesEdicion = '<option value="">Selecciona la clase a editar...</option>';
+        let clasesEdicionUnicas = new Set();
+        clasesGlobal.forEach(c => clasesEdicionUnicas.add(`${c.grupo}|${c.materia||''}`));
+        Array.from(clasesEdicionUnicas).sort().forEach(opt => {
+            const [g, m] = opt.split('|');
+            opcionesEdicion += `<option value="${opt}">${g} - ${m || 'General'}</option>`;
+        });
+        if(document.getElementById('edicion-grupo-select')) document.getElementById('edicion-grupo-select').innerHTML = opcionesEdicion;
 
         cargarHistorial();
         cargarReportes();
@@ -112,7 +113,7 @@ async function configurarAccesos() {
             cargarProfesoresAdmin();
         }
     } catch(e) {
-        console.error("Error al configurar accesos iniciales", e);
+        console.error("Error al configurar accesos", e);
     }
 }
 
@@ -184,7 +185,6 @@ async function cargarAlumnos() {
     const res = await fetch(url);
     alumnosGrupo = await res.json();
     
-    // AGRUPACIÓN RECONSTRUIDA POR SECCIONES
     const gruposSeccion = alumnosGrupo.reduce((acc, a) => {
         const sec = (a.seccion && a.seccion !== 'All' && a.seccion !== 'General') ? a.seccion : 'General';
         if(!acc[sec]) acc[sec] = [];
@@ -305,7 +305,7 @@ function renderizarTablaHistorial(datos) {
     
     if(vista === 'lista') {
         if(datos.length === 0) {
-            tabla.innerHTML = '<thead><tr><th>Día</th><th>Fecha</th><th>Hora</th><th>Grupo</th><th>Materia</th><th>Sección</th><th>Modalidad</th><th>Nombre</th><th>Estado</th></tr></thead><tbody><tr><td colspan="9" style="text-align:center; padding:20px; color:#555;">No hay registros de asistencia que coincidan con estos filtros.<br><br><i>Nota: Si borraste y volviste a crear este grupo recientemente, los registros antiguos se separaron. ¡Toma lista hoy para verlos aparecer aquí!</i></td></tr></tbody>';
+            tabla.innerHTML = '<thead><tr><th>Día</th><th>Fecha</th><th>Hora</th><th>Grupo</th><th>Materia</th><th>Sección</th><th>Modalidad</th><th>Nombre</th><th>Estado</th></tr></thead><tbody><tr><td colspan="9" style="text-align:center; padding:20px; color:#555;">No hay registros.</td></tr></tbody>';
         } else {
             tabla.innerHTML = '<thead><tr><th>Día</th><th>Fecha</th><th>Hora</th><th>Grupo</th><th>Materia</th><th>Sección</th><th>Modalidad</th><th>Nombre</th><th>Estado</th></tr></thead><tbody>' + 
             datos.map(r => {
@@ -337,7 +337,6 @@ function renderizarTablaHistorial(datos) {
                     diaStr: getDiaSemana(r.fecha),
                     nombre: r.nombre,
                     modalidad: r.modalidad || 'Ad lucem',
-                    seccion: (!r.seccion || r.seccion === 'All' || r.seccion === 'General') ? 'General' : r.seccion,
                     asistencias: {}
                 };
             }
@@ -350,15 +349,16 @@ function renderizarTablaHistorial(datos) {
                 estado: estadoCorto, 
                 colorText: colorText, 
                 bgFalta: bgFalta, 
-                materia: r.materia || 'Gral' 
+                materia: r.materia || 'Gral',
+                seccion: (!r.seccion || r.seccion === 'All' || r.seccion === 'General') ? '' : r.seccion
             };
         });
 
+        // NUEVO DISEÑO MATRIZ: Se omite la columna sección general, se inyecta en la celda individual
         let html = '<thead><tr>';
         html += `<th style="background:var(--nav); color:#fff; border:1px solid #ccc; padding:10px; min-width:100px; text-align:center;">Día</th>`;
         html += `<th style="background:var(--nav); color:#fff; border:1px solid #ccc; padding:10px; min-width:180px;">Estudiante</th>`;
         html += `<th style="background:var(--nav); color:#fff; border:1px solid #ccc; padding:10px; text-align:center;">Modalidad</th>`;
-        html += `<th style="background:var(--nav); color:#fff; border:1px solid #ccc; padding:10px; text-align:center;">Sección</th>`;
         
         columnasHora.forEach(h => { 
             html += `<th style="text-align:center; background:var(--nav); color:#fff; font-size:0.85rem; border:1px solid #ccc; padding:10px; min-width:80px;">${h}</th>`; 
@@ -373,15 +373,15 @@ function renderizarTablaHistorial(datos) {
             html += `<td style="border:1px solid #ccc; text-align:center; vertical-align:middle;"><strong>${row.diaStr}</strong><br><span style="font-size:0.75rem; color:#666;">${row.fecha}</span></td>`;
             html += `<td style="border:1px solid #ccc; vertical-align:middle;"><strong>${row.nombre}</strong></td>`;
             html += `<td style="border:1px solid #ccc; text-align:center; vertical-align:middle;">${row.modalidad}</td>`;
-            html += `<td style="border:1px solid #ccc; text-align:center; vertical-align:middle; color:#8E44AD; font-weight:bold;">${row.seccion}</td>`;
             
             columnasHora.forEach(h => {
                 let cell = row.asistencias[h];
                 if(cell) {
                     let bgStyle = cell.bgFalta ? `background-color:${cell.bgFalta};` : '';
+                    let secHtml = cell.seccion ? `<br><span style="font-size:0.65rem; color:#8E44AD; font-weight:bold; white-space:nowrap; background:#f4e8fb; padding:2px 4px; border-radius:3px;">Sec: ${cell.seccion}</span>` : '';
                     html += `<td style="text-align:center; vertical-align:middle; border:1px solid #ccc; ${bgStyle}">
                         <span style="color:${cell.colorText}; font-weight:bold; font-size:1.1rem;">${cell.estado}</span><br>
-                        <span style="font-size:0.7rem; color:#666; white-space:nowrap;">${cell.materia}</span>
+                        <span style="font-size:0.7rem; color:#666; white-space:nowrap;">${cell.materia}</span>${secHtml}
                     </td>`;
                 } else {
                     html += `<td style="text-align:center; vertical-align:middle; border:1px solid #ccc; background-color:#f9f9f9; color:#aaa;">-</td>`;
@@ -510,26 +510,29 @@ function imprimirPDFReportes() {
 
 /* --- EDICIÓN EN TIEMPO REAL Y MASIVA --- */
 async function cargarEdicionGrupo() {
-    const grupo = document.getElementById('edicion-grupo-select').value;
+    const val = document.getElementById('edicion-grupo-select').value;
     const container = document.getElementById('edicion-lista-estudiantes');
-    
     const panelMasivo = document.getElementById('edicion-masiva-panel');
-    if(panelMasivo) {
-        panelMasivo.style.display = grupo ? 'block' : 'none';
-    }
+    
+    if(panelMasivo) panelMasivo.style.display = val ? 'block' : 'none';
 
-    if(!grupo) { 
-        container.innerHTML = '<p style="text-align:center; padding:20px; color:#777;">Selecciona un grupo arriba para comenzar a editar.</p>'; 
+    if(!val) { 
+        container.innerHTML = '<p style="text-align:center; padding:20px; color:#777;">Selecciona un grupo y materia arriba para editar.</p>'; 
         return; 
     }
     
+    // NUEVO: La edición ahora filtra exactamente por la materia seleccionada
+    const [grupo, materia] = val.split('|');
     container.innerHTML = '<p style="text-align:center; padding:20px;">Cargando estudiantes...</p>';
+    
     try {
-        const res = await fetch(`${API_URL}/estudiantes?grupo=${grupo}&t=${Date.now()}`);
+        let url = `${API_URL}/estudiantes?grupo=${grupo}`;
+        if (materia) url += `&materia=${materia}`;
+        const res = await fetch(url + `&t=${Date.now()}`);
         const estudiantes = await res.json();
         
         if(estudiantes.length === 0) {
-            container.innerHTML = '<p style="text-align:center; padding:20px;">No hay alumnos en este grupo.</p>';
+            container.innerHTML = '<p style="text-align:center; padding:20px;">No hay alumnos en este filtro.</p>';
             return;
         }
 
@@ -626,13 +629,15 @@ async function eliminarEstudianteEnVivo(id) {
 }
 
 async function asignarMateriaMasivaEnEdicion() {
-    const grupo = document.getElementById('edicion-grupo-select').value;
+    const val = document.getElementById('edicion-grupo-select').value;
     const materia = document.getElementById('edicion-masiva-materia').value.trim();
 
-    if(!grupo) return alert('⚠️ Selecciona un grupo arriba primero.');
+    if(!val) return alert('⚠️ Selecciona un grupo arriba primero.');
     if(!materia) return alert('⚠️ Escribe el nombre de la materia a aplicar.');
 
-    if(confirm(`⚠️ ¿Seguro que quieres asignar la materia "${materia}" a TODOS los alumnos del grupo "${grupo}"?`)) {
+    const [grupo, mat_actual] = val.split('|');
+
+    if(confirm(`⚠️ ¿Seguro que quieres asignar la materia "${materia}" a TODOS los alumnos del filtro seleccionado?`)) {
         try {
             const res = await fetch(`${API_URL}/admin/grupo-masivo`, {
                 method: 'PUT',
@@ -685,15 +690,22 @@ function generarHTMLPermisos(id, rol, valoresStr) {
     opciones.forEach(opt => {
         const checked = (valoresArray.includes(opt) || valoresStr === 'ALL') ? 'checked' : '';
         let labelOpt = opt;
+        let isSection = opt.split('|').length === 3;
+        
+        // DISEÑO VISUAL PARA NO CONFUNDIR SECCIONES CON LA CLASE COMPLETA
+        let color = isSection ? '#8E44AD' : '#003366';
+        let bg = isSection ? '#f4e8fb' : '#e6f0fa';
+        let fw = isSection ? 'bold' : 'normal';
+
         if(rol === 'profesor') {
             const parts = opt.split('|');
-            if(parts.length === 3 && parts[2]) {
+            if(isSection) {
                 labelOpt = `${parts[0]} - ${parts[1]} (Sec: ${parts[2]})`;
             } else {
                 labelOpt = `${parts[0]} - ${parts[1]||'Gral'} (Toda la clase)`;
             }
         }
-        html += `<label style="cursor:pointer; display:flex; align-items:center; gap:5px; background:#f4f7f6; padding:4px; border-radius:4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${labelOpt}"><input type="checkbox" class="chk_${id}" value="${opt}" ${checked}> ${labelOpt}</label>`;
+        html += `<label style="cursor:pointer; display:flex; align-items:center; gap:5px; background:${bg}; color:${color}; font-weight:${fw}; padding:6px; border-radius:4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid ${color}40;" title="${labelOpt}"><input type="checkbox" class="chk_${id}" value="${opt}" ${checked}> ${labelOpt}</label>`;
     });
     html += `</div>`;
     return html;

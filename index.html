@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chemlist App - v44</title>
+    <title>Chemlist App - v46</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#003366">
     <link rel="apple-touch-icon" href="logo.png">
@@ -146,13 +146,23 @@
             </div>
         </div>
 
+        <!-- Pestaña 4: Edición en Tiempo Real -->
         <div id="edicion" class="tab-content">
             <h3 style="margin-bottom:15px; color:var(--nav);">✏️ Edición de Grupo en Tiempo Real</h3>
-            <p style="font-size:0.85rem; margin-bottom:15px; color:#555;">Selecciona un grupo base. Aquí verás a <b>todos</b> los estudiantes de ese grupo, las materias que cursan, sus modalidades y secciones. Cualquier cambio que escribas se guardará <b>automáticamente</b> en la nube.</p>
+            <p style="font-size:0.85rem; margin-bottom:15px; color:#555;">Selecciona un grupo base. Aquí verás a <b>todos</b> los estudiantes de ese grupo. Cualquier cambio individual se guardará automáticamente.</p>
 
             <div style="display:flex; gap:10px; margin-bottom:15px; align-items:center;">
                 <select id="edicion-grupo-select" onchange="cargarEdicionGrupo()" style="flex:2; font-size:1.05rem; padding:10px; margin:0;"><option value="">Cargando grupos...</option></select>
                 <button class="btn" style="background:#007BFF; flex:1; margin:0; height:100%;" onclick="cargarEdicionGrupo()">🔄 Recargar Lista</button>
+            </div>
+
+            <!-- NUEVO: Panel de Asignación Masiva DE MATERIA -->
+            <div id="edicion-masiva-panel" style="display:none; background:#e0f7fa; padding:15px; border-radius:8px; margin-bottom:15px; border:1px solid #00acc1;">
+                <h4 style="color:#00838f; margin-bottom:10px;">⚡ Asignar Materia a todo el Grupo</h4>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <input type="text" id="edicion-masiva-materia" placeholder="Escribe la materia (ej. Biología)..." style="flex:2; margin:0; min-width:150px; font-weight:bold; border:1px solid #00acc1;">
+                    <button class="btn" style="background:#00acc1; flex:1; margin:0; font-weight:bold; min-width:150px;" onclick="asignarMateriaMasivaEnEdicion()">Aplicar Materia a Todos</button>
+                </div>
             </div>
 
             <div id="edicion-indicador" style="display:none; background:#d4edda; color:#155724; padding:10px; border-radius:8px; border:1px solid #c3e6cb; margin-bottom:15px; font-weight:bold; text-align:center; transition: opacity 0.5s;">
@@ -164,6 +174,7 @@
             </div>
         </div>
 
+        <!-- Pestaña 5: Control Maestro -->
         <div id="admin-panel" class="tab-content">
             <h3 style="margin-bottom:15px; color:var(--nav);">Control Maestro</h3>
             
@@ -267,10 +278,15 @@
         </div>
     </div>
     
-    <script src="app.js?v=44"></script>
+    <!-- Script Forzador (Anti-Caché Definitivo) -->
     <script>
+        const versionTime = new Date().getTime();
+        const script = document.createElement('script');
+        script.src = 'app.js?v=' + versionTime;
+        document.body.appendChild(script);
+
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').then(() => console.log("Service Worker Registrado."));
+            navigator.serviceWorker.register('sw.js?v=' + versionTime).then(() => console.log("SW Cache Bypassed."));
         }
     </script>
 </body>

@@ -1,4 +1,4 @@
-const APP_VERSION = "v43 - Excel Plano";
+const APP_VERSION = "v43";
 console.log("Iniciando Chemlist: " + APP_VERSION);
 
 window.addEventListener('DOMContentLoaded', () => {

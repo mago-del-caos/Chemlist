@@ -1,4 +1,4 @@
-const APP_VERSION = "v47 - Sincronización Anti-Caché";
+const APP_VERSION = "v48 - Agrupación por Secciones";
 console.log("Iniciando Chemlist: " + APP_VERSION);
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -35,7 +35,6 @@ async function login() {
         document.getElementById('profesor-nombre').innerText = currentUser.nombre;
         document.getElementById('user-role').innerText = currentUser.rol.toUpperCase();
         
-        // Ajuste preciso de la fecha local
         const d = new Date();
         document.getElementById('fecha').value = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
         
@@ -185,18 +184,19 @@ async function cargarAlumnos() {
     const res = await fetch(url);
     alumnosGrupo = await res.json();
     
-    const gruposModalidad = alumnosGrupo.reduce((acc, a) => {
-        const mod = a.modalidad || 'General';
-        if(!acc[mod]) acc[mod] = [];
-        acc[mod].push(a);
+    // AGRUPACIÓN RECONSTRUIDA POR SECCIONES
+    const gruposSeccion = alumnosGrupo.reduce((acc, a) => {
+        const sec = (a.seccion && a.seccion !== 'All' && a.seccion !== 'General') ? a.seccion : 'General';
+        if(!acc[sec]) acc[sec] = [];
+        acc[sec].push(a);
         return acc;
     }, {});
 
     let html = '';
-    for (const mod in gruposModalidad) {
-        html += `<h4 style="margin-top:15px; margin-bottom:10px; color:var(--gr); border-bottom:2px solid var(--yw); padding-bottom:5px;">🏫 ${mod}</h4>`;
-        html += gruposModalidad[mod].map(a => {
-            let tags = (a.seccion && a.seccion !== 'General' && a.seccion !== 'All') ? `<span class="modalidad-tag" style="background:#eafaf1; color:#8E44AD; font-weight:bold;">Sec: ${a.seccion}</span>` : '';
+    for (const sec in gruposSeccion) {
+        html += `<h4 style="margin-top:15px; margin-bottom:10px; color:#8E44AD; border-bottom:2px solid #8E44AD; padding-bottom:5px;">📂 Sección: ${sec}</h4>`;
+        html += gruposSeccion[sec].map(a => {
+            let tags = (a.modalidad && a.modalidad !== 'General') ? `<span class="modalidad-tag" style="background:#eafaf1; color:var(--gr); font-weight:bold;">${a.modalidad}</span>` : '';
             return `
             <div class="student-row">
                 <strong><a href="#" onclick="verReporteEstudianteDesdeLista('${a.nombre}'); return false;" style="color:var(--nav); text-decoration:none; border-bottom:1px dashed var(--nav); cursor:pointer;">${a.nombre}</a></strong> 
@@ -674,7 +674,7 @@ function generarHTMLPermisos(id, rol, valoresStr) {
         clasesGlobal.forEach(c => {
             const baseStr = `${c.grupo}|${c.materia||''}`;
             opciones.push(baseStr);
-            if(c.seccion) opciones.push(`${baseStr}|${c.seccion}`);
+            if(c.seccion && c.seccion !== 'General' && c.seccion !== 'All') opciones.push(`${baseStr}|${c.seccion}`);
         });
         opciones = [...new Set(opciones)].sort();
     }

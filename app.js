@@ -1,3 +1,17 @@
+const APP_VERSION = "v40 - Control Definitivo";
+console.log("Iniciando Chemlist: " + APP_VERSION);
+
+window.addEventListener('DOMContentLoaded', () => {
+    const headerTitle = document.querySelector('header h1');
+    if (headerTitle && !document.getElementById('version-badge-app')) {
+        const badge = document.createElement('span');
+        badge.id = 'version-badge-app';
+        badge.style.cssText = 'font-size: 0.6rem; background: #FFC107; color: #000; padding: 2px 6px; border-radius: 4px; vertical-align: middle; margin-left: 5px;';
+        badge.innerText = APP_VERSION;
+        headerTitle.appendChild(badge);
+    }
+});
+
 const API_URL = 'https://chemlist-api.adrian-camelot32.workers.dev';
 let currentUser = null;
 let alumnosGrupo = [];
@@ -35,59 +49,68 @@ function parseModalidad(mod) {
 }
 
 async function configurarAccesos() {
-    const res = await fetch(`${API_URL}/grupos`);
-    clasesGlobal = await res.json(); 
-    
-    let htmlSelect = '<option value="">Selecciona la clase...</option>';
-    const permitidos = currentUser.grupos.split(',');
-
-    let dropdownOptions = new Set();
-    clasesGlobal.forEach(c => {
-        const baseStr = `${c.grupo}|${c.materia||''}`;
-        const fullStr = `${c.grupo}|${c.materia||''}|${c.seccion||''}`;
-        
-        if (currentUser.grupos === 'ALL' || permitidos.includes(c.grupo) || permitidos.includes(baseStr) || permitidos.includes(fullStr)) {
-            dropdownOptions.add(fullStr);
-        }
-    });
-
-    Array.from(dropdownOptions).sort().forEach(opt => {
-        const parts = opt.split('|');
-        const g = parts[0];
-        const m = parts[1] || 'General';
-        const sec = parts[2] ? ` (Sec: ${parts[2]})` : '';
-        htmlSelect += `<option value="${opt}">${g} - ${m}${sec}</option>`;
-    });
-    document.getElementById('grupo-select').innerHTML = htmlSelect;
-
-    let gruposUnicos = [...new Set(clasesGlobal.map(c => c.grupo))];
-    let materiasUnicas = [...new Set(clasesGlobal.map(c => c.materia).filter(m => m))];
-
-    document.getElementById('filtro-grupo').innerHTML = '<option value="">Todos los grupos</option>' + gruposUnicos.map(g => `<option value="${g}">${g}</option>`).join('');
-    document.getElementById('filtro-grupo-rep').innerHTML = '<option value="">Todos los grupos</option>' + gruposUnicos.map(g => `<option value="${g}">${g}</option>`).join('');
-    document.getElementById('filtro-materia').innerHTML = '<option value="">Todas las materias</option>' + materiasUnicas.map(m => `<option value="${m}">${m}</option>`).join('');
-    document.getElementById('filtro-materia-rep').innerHTML = '<option value="">Todas las materias</option>' + materiasUnicas.map(m => `<option value="${m}">${m}</option>`).join('');
-
-    let todosLosGruposUnicos = [...new Set(clasesGlobal.map(c => c.grupo))];
-    let opcionesAdmin = '<option value="">Selecciona un grupo...</option>' + todosLosGruposUnicos.map(g => `<option value="${g}">${g}</option>`).join('');
-    
-    document.getElementById('admin-grupo-select').innerHTML = opcionesAdmin;
-    document.getElementById('edicion-grupo-select').innerHTML = opcionesAdmin;
-    if(document.getElementById('admin-borrar-grupo-select')) document.getElementById('admin-borrar-grupo-select').innerHTML = opcionesAdmin;
-    if(document.getElementById('admin-masivo-grupo-select')) document.getElementById('admin-masivo-grupo-select').innerHTML = opcionesAdmin;
-    if(document.getElementById('materia-grupo-origen')) document.getElementById('materia-grupo-origen').innerHTML = opcionesAdmin;
-
+    // Escudo protector: Mostramos los botones ANTES de ejecutar consultas para evitar fallos de renderizado
     if (currentUser.rol === 'admin' || currentUser.rol === 'prefecto' || currentUser.rol === 'profesor') {
         document.getElementById('btn-historial').style.display = 'block';
         document.getElementById('btn-reportes').style.display = 'block';
-        cargarHistorial();
-        cargarReportes();
     }
     if (currentUser.rol === 'admin') {
         document.getElementById('btn-admin').style.display = 'block';
         document.getElementById('btn-edicion').style.display = 'block';
-        actualizarUIPermisosNuevo();
-        cargarProfesoresAdmin();
+    }
+
+    try {
+        const res = await fetch(`${API_URL}/grupos`);
+        clasesGlobal = await res.json(); 
+        
+        let htmlSelect = '<option value="">Selecciona la clase...</option>';
+        const permitidos = (currentUser.grupos || '').split(',');
+
+        let dropdownOptions = new Set();
+        clasesGlobal.forEach(c => {
+            const baseStr = `${c.grupo}|${c.materia||''}`;
+            const fullStr = `${c.grupo}|${c.materia||''}|${c.seccion||''}`;
+            
+            if (currentUser.grupos === 'ALL' || permitidos.includes(c.grupo) || permitidos.includes(baseStr) || permitidos.includes(fullStr)) {
+                dropdownOptions.add(fullStr);
+            }
+        });
+
+        Array.from(dropdownOptions).sort().forEach(opt => {
+            const parts = opt.split('|');
+            const g = parts[0];
+            const m = parts[1] || 'General';
+            const sec = parts[2] ? ` (Sec: ${parts[2]})` : '';
+            htmlSelect += `<option value="${opt}">${g} - ${m}${sec}</option>`;
+        });
+        document.getElementById('grupo-select').innerHTML = htmlSelect;
+
+        let gruposUnicos = [...new Set(clasesGlobal.map(c => c.grupo))];
+        let materiasUnicas = [...new Set(clasesGlobal.map(c => c.materia).filter(m => m))];
+
+        document.getElementById('filtro-grupo').innerHTML = '<option value="">Todos los grupos</option>' + gruposUnicos.map(g => `<option value="${g}">${g}</option>`).join('');
+        document.getElementById('filtro-grupo-rep').innerHTML = '<option value="">Todos los grupos</option>' + gruposUnicos.map(g => `<option value="${g}">${g}</option>`).join('');
+        document.getElementById('filtro-materia').innerHTML = '<option value="">Todas las materias</option>' + materiasUnicas.map(m => `<option value="${m}">${m}</option>`).join('');
+        document.getElementById('filtro-materia-rep').innerHTML = '<option value="">Todas las materias</option>' + materiasUnicas.map(m => `<option value="${m}">${m}</option>`).join('');
+
+        let todosLosGruposUnicos = [...new Set(clasesGlobal.map(c => c.grupo))];
+        let opcionesAdmin = '<option value="">Selecciona un grupo...</option>' + todosLosGruposUnicos.map(g => `<option value="${g}">${g}</option>`).join('');
+        
+        document.getElementById('admin-grupo-select').innerHTML = opcionesAdmin;
+        document.getElementById('edicion-grupo-select').innerHTML = opcionesAdmin;
+        if(document.getElementById('admin-borrar-grupo-select')) document.getElementById('admin-borrar-grupo-select').innerHTML = opcionesAdmin;
+        if(document.getElementById('admin-masivo-grupo-select')) document.getElementById('admin-masivo-grupo-select').innerHTML = opcionesAdmin;
+        if(document.getElementById('materia-grupo-origen')) document.getElementById('materia-grupo-origen').innerHTML = opcionesAdmin;
+
+        cargarHistorial();
+        cargarReportes();
+        
+        if (currentUser.rol === 'admin') {
+            actualizarUIPermisosNuevo();
+            cargarProfesoresAdmin();
+        }
+    } catch(e) {
+        console.error("Error al configurar accesos iniciales", e);
     }
 }
 
@@ -235,14 +258,16 @@ function getDiaSemana(fechaStr) {
 }
 
 async function cargarHistorial() {
-    const res = await fetch(`${API_URL}/asistencia-historial`);
-    let data = await res.json();
-    if (currentUser.rol === 'profesor') {
-        const perms = currentUser.grupos.split(',');
-        data = data.filter(r => perms.includes(r.grupo) || perms.includes(`${r.grupo}|${r.materia||''}`) || perms.includes(`${r.grupo}|${r.materia||''}|${r.seccion||''}`));
-    }
-    historialCompleto = data;
-    aplicarFiltrosHistorial();
+    try {
+        const res = await fetch(`${API_URL}/asistencia-historial`);
+        let data = await res.json();
+        if (currentUser.rol === 'profesor') {
+            const perms = (currentUser.grupos || '').split(',');
+            data = data.filter(r => perms.includes(r.grupo) || perms.includes(`${r.grupo}|${r.materia||''}`) || perms.includes(`${r.grupo}|${r.materia||''}|${r.seccion||''}`));
+        }
+        historialCompleto = data;
+        aplicarFiltrosHistorial();
+    } catch(e) { console.error("Error cargando historial", e); }
 }
 
 function aplicarFiltrosHistorial() {
@@ -423,14 +448,16 @@ function imprimirPDF() {
 }
 
 async function cargarReportes() {
-    const res = await fetch(`${API_URL}/reportes`);
-    let data = await res.json();
-    if (currentUser.rol === 'profesor') {
-        const perms = currentUser.grupos.split(',');
-        data = data.filter(r => perms.includes(r.grupo) || perms.includes(`${r.grupo}|${r.materia||''}`));
-    }
-    reportesCompleto = data;
-    renderizarTablaReportes(reportesCompleto);
+    try {
+        const res = await fetch(`${API_URL}/reportes`);
+        let data = await res.json();
+        if (currentUser.rol === 'profesor') {
+            const perms = (currentUser.grupos || '').split(',');
+            data = data.filter(r => perms.includes(r.grupo) || perms.includes(`${r.grupo}|${r.materia||''}`));
+        }
+        reportesCompleto = data;
+        renderizarTablaReportes(reportesCompleto);
+    } catch(e) { console.error("Error cargando reportes", e); }
 }
 
 function aplicarFiltrosReportes() {
@@ -471,40 +498,42 @@ async function cargarEdicionGrupo() {
     }
     
     container.innerHTML = '<p style="text-align:center; padding:20px;">Cargando estudiantes...</p>';
-    const res = await fetch(`${API_URL}/estudiantes?grupo=${grupo}`);
-    const estudiantes = await res.json();
-    
-    if(estudiantes.length === 0) {
-        container.innerHTML = '<p style="text-align:center; padding:20px;">No hay alumnos en este grupo.</p>';
-        return;
-    }
+    try {
+        const res = await fetch(`${API_URL}/estudiantes?grupo=${grupo}`);
+        const estudiantes = await res.json();
+        
+        if(estudiantes.length === 0) {
+            container.innerHTML = '<p style="text-align:center; padding:20px;">No hay alumnos en este grupo.</p>';
+            return;
+        }
 
-    let html = '<table style="width:100%; min-width:800px; border-collapse:collapse; font-size:0.9rem;">';
-    html += '<thead style="background:var(--nav); color:#fff;"><tr><th style="padding:10px;">Nombre</th><th style="padding:10px;">Modalidad</th><th style="padding:10px;">Materia</th><th style="padding:10px;">Sección</th><th style="padding:10px; text-align:center;">Acción</th></tr></thead><tbody>';
-    
-    estudiantes.forEach(e => {
-        const fallbackOption = ['Ad lucem','360','Multicultural Inglés','Multicultural Francés'].includes(e.modalidad) ? '' : `<option value="${e.modalidad}" selected>${e.modalidad}</option>`;
-        html += `<tr style="border-bottom:1px solid #ddd; transition: background-color 0.3s;" id="row_${e.id}">
-            <td style="padding:5px;"><input type="text" id="envivo_nom_${e.id}" value="${e.nombre}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid #ccc; font-weight:bold; border-radius:4px; padding:8px;"></td>
-            <td style="padding:5px;">
-                <select id="envivo_mod_${e.id}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid var(--gr); color:var(--gr); font-weight:bold; border-radius:4px; padding:8px;">
-                    <option value="Ad lucem" ${e.modalidad==='Ad lucem'?'selected':''}>Ad lucem</option>
-                    <option value="360" ${e.modalidad==='360'?'selected':''}>360</option>
-                    <option value="Multicultural Inglés" ${e.modalidad==='Multicultural Inglés'?'selected':''}>Multi. Inglés</option>
-                    <option value="Multicultural Francés" ${e.modalidad==='Multicultural Francés'?'selected':''}>Multi. Francés</option>
-                    ${fallbackOption}
-                </select>
-            </td>
-            <td style="padding:5px;"><input type="text" id="envivo_mat_${e.id}" value="${e.materia || ''}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid #ccc; border-radius:4px; padding:8px;" placeholder="Materia"></td>
-            <td style="padding:5px;"><input type="text" id="envivo_sec_${e.id}" value="${e.seccion || ''}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid #ccc; border-radius:4px; padding:8px;" placeholder="Ej. Avanzados"></td>
-            <td style="padding:5px; text-align:center;">
-                <input type="hidden" id="envivo_gpo_${e.id}" value="${e.grupo}">
-                <button class="btn" style="background:#D32F2F; padding:8px;" onclick="eliminarEstudianteEnVivo(${e.id})" title="Eliminar alumno permanentemente">🗑️</button>
-            </td>
-        </tr>`;
-    });
-    html += '</tbody></table>';
-    container.innerHTML = html;
+        let html = '<table style="width:100%; min-width:800px; border-collapse:collapse; font-size:0.9rem;">';
+        html += '<thead style="background:var(--nav); color:#fff;"><tr><th style="padding:10px;">Nombre</th><th style="padding:10px;">Modalidad</th><th style="padding:10px;">Materia</th><th style="padding:10px;">Sección</th><th style="padding:10px; text-align:center;">Acción</th></tr></thead><tbody>';
+        
+        estudiantes.forEach(e => {
+            const fallbackOption = ['Ad lucem','360','Multicultural Inglés','Multicultural Francés'].includes(e.modalidad) ? '' : `<option value="${e.modalidad}" selected>${e.modalidad}</option>`;
+            html += `<tr style="border-bottom:1px solid #ddd; transition: background-color 0.3s;" id="row_${e.id}">
+                <td style="padding:5px;"><input type="text" id="envivo_nom_${e.id}" value="${e.nombre}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid #ccc; font-weight:bold; border-radius:4px; padding:8px;"></td>
+                <td style="padding:5px;">
+                    <select id="envivo_mod_${e.id}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid var(--gr); color:var(--gr); font-weight:bold; border-radius:4px; padding:8px;">
+                        <option value="Ad lucem" ${e.modalidad==='Ad lucem'?'selected':''}>Ad lucem</option>
+                        <option value="360" ${e.modalidad==='360'?'selected':''}>360</option>
+                        <option value="Multicultural Inglés" ${e.modalidad==='Multicultural Inglés'?'selected':''}>Multi. Inglés</option>
+                        <option value="Multicultural Francés" ${e.modalidad==='Multicultural Francés'?'selected':''}>Multi. Francés</option>
+                        ${fallbackOption}
+                    </select>
+                </td>
+                <td style="padding:5px;"><input type="text" id="envivo_mat_${e.id}" value="${e.materia || ''}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid #ccc; border-radius:4px; padding:8px;" placeholder="Materia"></td>
+                <td style="padding:5px;"><input type="text" id="envivo_sec_${e.id}" value="${e.seccion || ''}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid #ccc; border-radius:4px; padding:8px;" placeholder="Ej. Avanzados"></td>
+                <td style="padding:5px; text-align:center;">
+                    <input type="hidden" id="envivo_gpo_${e.id}" value="${e.grupo}">
+                    <button class="btn" style="background:#D32F2F; padding:8px;" onclick="eliminarEstudianteEnVivo(${e.id})" title="Eliminar alumno permanentemente">🗑️</button>
+                </td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    } catch(e) { console.error(e); }
 }
 
 async function guardarEstudianteEnVivo(id) {
@@ -534,8 +563,6 @@ async function guardarEstudianteEnVivo(id) {
             tr.style.backgroundColor = 'transparent';
         }, 500);
     }, 2000);
-    
-    configurarAccesos(); 
 }
 
 async function eliminarEstudianteEnVivo(id) {
@@ -674,32 +701,34 @@ async function eliminarGrupoEntero() {
 }
 
 async function cargarProfesoresAdmin() {
-    const res = await fetch(`${API_URL}/admin/profesores`);
-    const profes = await res.json();
-    document.getElementById('admin-lista-profesores').innerHTML = profes.map(p => `
-        <div style="background:#fff; padding:15px; border-radius:8px; margin-bottom:10px; border:1px solid #ddd;">
-            <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
-                <div style="flex:1;"><label style="font-size:0.75rem; font-weight:bold;">👤 Usuario:</label><input type="text" id="edit_prof_user_${p.id}" value="${p.username}" style="margin:0;"></div>
-                <div style="flex:1;"><label style="font-size:0.75rem; font-weight:bold; color:#D32F2F;">🔑 Contraseña:</label><input type="text" id="edit_prof_pass_${p.id}" value="${p.password}" style="margin:0; border-color:#FFC107;"></div>
-                <div style="flex:2;"><label style="font-size:0.75rem; font-weight:bold;">Nombre Real:</label><input type="text" id="edit_prof_nom_${p.id}" value="${p.nombre}" style="margin:0;"></div>
-            </div>
-            <div style="display:flex; gap:10px; align-items:stretch;">
-                <div style="flex:1;">
-                    <label style="font-size:0.75rem; font-weight:bold;">Rol del Usuario:</label>
-                    <select id="edit_prof_rol_${p.id}" style="width:100%; height:45px; margin:0;" onchange="actualizarUIPermisosEdit(${p.id})">
-                        <option value="profesor" ${p.rol==='profesor'?'selected':''}>Profesor (Materia)</option>
-                        <option value="prefecto" ${p.rol==='prefecto'?'selected':''}>Prefecto (Grupos)</option>
-                        <option value="admin" ${p.rol==='admin'?'selected':''}>Administrador</option>
-                    </select>
+    try {
+        const res = await fetch(`${API_URL}/admin/profesores`);
+        const profes = await res.json();
+        document.getElementById('admin-lista-profesores').innerHTML = profes.map(p => `
+            <div style="background:#fff; padding:15px; border-radius:8px; margin-bottom:10px; border:1px solid #ddd;">
+                <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
+                    <div style="flex:1;"><label style="font-size:0.75rem; font-weight:bold;">👤 Usuario:</label><input type="text" id="edit_prof_user_${p.id}" value="${p.username}" style="margin:0;"></div>
+                    <div style="flex:1;"><label style="font-size:0.75rem; font-weight:bold; color:#D32F2F;">🔑 Contraseña:</label><input type="text" id="edit_prof_pass_${p.id}" value="${p.password}" style="margin:0; border-color:#FFC107;"></div>
+                    <div style="flex:2;"><label style="font-size:0.75rem; font-weight:bold;">Nombre Real:</label><input type="text" id="edit_prof_nom_${p.id}" value="${p.nombre}" style="margin:0;"></div>
                 </div>
-                <div id="wrapper_permisos_${p.id}" style="flex:2;">${generarHTMLPermisos(`edit_prof_grupos_${p.id}`, p.rol, p.grupos)}</div>
-                <div style="display:flex; flex-direction:column; gap:5px;">
-                    <button class="btn" style="background:#FFC107; color:#000; height:100%; font-weight:bold; padding:10px;" onclick="editarProfesor(${p.id})">💾 Guardar</button>
-                    <button class="btn" style="background:#D32F2F; height:100%; padding:10px;" onclick="eliminarProfesor(${p.id})">🗑️</button>
+                <div style="display:flex; gap:10px; align-items:stretch;">
+                    <div style="flex:1;">
+                        <label style="font-size:0.75rem; font-weight:bold;">Rol del Usuario:</label>
+                        <select id="edit_prof_rol_${p.id}" style="width:100%; height:45px; margin:0;" onchange="actualizarUIPermisosEdit(${p.id})">
+                            <option value="profesor" ${p.rol==='profesor'?'selected':''}>Profesor (Materia)</option>
+                            <option value="prefecto" ${p.rol==='prefecto'?'selected':''}>Prefecto (Grupos)</option>
+                            <option value="admin" ${p.rol==='admin'?'selected':''}>Administrador</option>
+                        </select>
+                    </div>
+                    <div id="wrapper_permisos_${p.id}" style="flex:2;">${generarHTMLPermisos(`edit_prof_grupos_${p.id}`, p.rol, p.grupos)}</div>
+                    <div style="display:flex; flex-direction:column; gap:5px;">
+                        <button class="btn" style="background:#FFC107; color:#000; height:100%; font-weight:bold; padding:10px;" onclick="editarProfesor(${p.id})">💾 Guardar</button>
+                        <button class="btn" style="background:#D32F2F; height:100%; padding:10px;" onclick="eliminarProfesor(${p.id})">🗑️</button>
+                    </div>
                 </div>
             </div>
-        </div>
-    `).join('');
+        `).join('');
+    } catch(e) { console.error(e); }
 }
 
 async function editarProfesor(id) {

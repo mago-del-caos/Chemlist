@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chemlist App - v39</title>
+    <title>Chemlist App - v40</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#003366">
     <link rel="apple-touch-icon" href="logo.png">
@@ -62,7 +62,6 @@
             <button class="tab-btn" id="btn-admin" onclick="showTab('admin-panel', this)" style="display:none;">⚙️ Admin</button>
         </div>
 
-        <!-- Pestaña 1: Pase de Lista -->
         <div id="lista" class="tab-content active">
             <select id="grupo-select"><option value="">Cargando clases...</option></select>
             <div style="display:flex; gap:5px; margin-bottom:10px;">
@@ -84,7 +83,6 @@
             <button class="btn btn-save" onclick="guardarAsistencia()">Guardar Asistencia</button>
         </div>
 
-        <!-- Pestaña 2: Historial y Exportaciones -->
         <div id="historial" class="tab-content">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                 <h3 style="color:var(--nav); margin:0;">Filtros de Asistencia</h3>
@@ -122,7 +120,6 @@
             </div>
         </div>
 
-        <!-- Pestaña 3: Reportes de Conducta -->
         <div id="reportes" class="tab-content">
             <h3 style="margin-bottom:10px; color:var(--nav);">Filtros de Incidentes</h3>
             <div class="filtros-container">
@@ -149,7 +146,6 @@
             </div>
         </div>
 
-        <!-- Pestaña 4: Edición en Tiempo Real -->
         <div id="edicion" class="tab-content">
             <h3 style="margin-bottom:15px; color:var(--nav);">✏️ Edición de Grupo en Tiempo Real</h3>
             <p style="font-size:0.85rem; margin-bottom:15px; color:#555;">Selecciona un grupo base. Aquí verás a <b>todos</b> los estudiantes de ese grupo, las materias que cursan, sus modalidades y secciones. Cualquier cambio que escribas se guardará <b>automáticamente</b> en la nube.</p>
@@ -168,7 +164,6 @@
             </div>
         </div>
 
-        <!-- Pestaña 5: Panel de Administrador -->
         <div id="admin-panel" class="tab-content">
             <h3 style="margin-bottom:15px; color:var(--nav);">Control Maestro</h3>
             
@@ -254,9 +249,7 @@
         </div>
     </div>
     
-    <!-- Scripts actualizados y vinculados para controlar caché y lógica (v39) -->
-    <script src="version.js?v=39"></script>
-    <script src="app.js?v=39"></script>
+    <script src="app.js?v=40"></script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').then(() => console.log("Service Worker Registrado."));

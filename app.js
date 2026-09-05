@@ -1,4 +1,4 @@
-const APP_VERSION = "v40 - Control Definitivo";
+const APP_VERSION = "v41 - Edición Reparada";
 console.log("Iniciando Chemlist: " + APP_VERSION);
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -49,7 +49,6 @@ function parseModalidad(mod) {
 }
 
 async function configurarAccesos() {
-    // Escudo protector: Mostramos los botones ANTES de ejecutar consultas para evitar fallos de renderizado
     if (currentUser.rol === 'admin' || currentUser.rol === 'prefecto' || currentUser.rol === 'profesor') {
         document.getElementById('btn-historial').style.display = 'block';
         document.getElementById('btn-reportes').style.display = 'block';
@@ -83,21 +82,22 @@ async function configurarAccesos() {
             const sec = parts[2] ? ` (Sec: ${parts[2]})` : '';
             htmlSelect += `<option value="${opt}">${g} - ${m}${sec}</option>`;
         });
-        document.getElementById('grupo-select').innerHTML = htmlSelect;
+        if(document.getElementById('grupo-select')) document.getElementById('grupo-select').innerHTML = htmlSelect;
 
         let gruposUnicos = [...new Set(clasesGlobal.map(c => c.grupo))];
         let materiasUnicas = [...new Set(clasesGlobal.map(c => c.materia).filter(m => m))];
 
-        document.getElementById('filtro-grupo').innerHTML = '<option value="">Todos los grupos</option>' + gruposUnicos.map(g => `<option value="${g}">${g}</option>`).join('');
-        document.getElementById('filtro-grupo-rep').innerHTML = '<option value="">Todos los grupos</option>' + gruposUnicos.map(g => `<option value="${g}">${g}</option>`).join('');
-        document.getElementById('filtro-materia').innerHTML = '<option value="">Todas las materias</option>' + materiasUnicas.map(m => `<option value="${m}">${m}</option>`).join('');
-        document.getElementById('filtro-materia-rep').innerHTML = '<option value="">Todas las materias</option>' + materiasUnicas.map(m => `<option value="${m}">${m}</option>`).join('');
+        if(document.getElementById('filtro-grupo')) document.getElementById('filtro-grupo').innerHTML = '<option value="">Todos los grupos</option>' + gruposUnicos.map(g => `<option value="${g}">${g}</option>`).join('');
+        if(document.getElementById('filtro-grupo-rep')) document.getElementById('filtro-grupo-rep').innerHTML = '<option value="">Todos los grupos</option>' + gruposUnicos.map(g => `<option value="${g}">${g}</option>`).join('');
+        if(document.getElementById('filtro-materia')) document.getElementById('filtro-materia').innerHTML = '<option value="">Todas las materias</option>' + materiasUnicas.map(m => `<option value="${m}">${m}</option>`).join('');
+        if(document.getElementById('filtro-materia-rep')) document.getElementById('filtro-materia-rep').innerHTML = '<option value="">Todas las materias</option>' + materiasUnicas.map(m => `<option value="${m}">${m}</option>`).join('');
 
         let todosLosGruposUnicos = [...new Set(clasesGlobal.map(c => c.grupo))];
         let opcionesAdmin = '<option value="">Selecciona un grupo...</option>' + todosLosGruposUnicos.map(g => `<option value="${g}">${g}</option>`).join('');
         
-        document.getElementById('admin-grupo-select').innerHTML = opcionesAdmin;
-        document.getElementById('edicion-grupo-select').innerHTML = opcionesAdmin;
+        // Listas blindadas contra el tropiezo
+        if(document.getElementById('admin-grupo-select')) document.getElementById('admin-grupo-select').innerHTML = opcionesAdmin;
+        if(document.getElementById('edicion-grupo-select')) document.getElementById('edicion-grupo-select').innerHTML = opcionesAdmin;
         if(document.getElementById('admin-borrar-grupo-select')) document.getElementById('admin-borrar-grupo-select').innerHTML = opcionesAdmin;
         if(document.getElementById('admin-masivo-grupo-select')) document.getElementById('admin-masivo-grupo-select').innerHTML = opcionesAdmin;
         if(document.getElementById('materia-grupo-origen')) document.getElementById('materia-grupo-origen').innerHTML = opcionesAdmin;
@@ -210,7 +210,7 @@ async function cargarAlumnos() {
             </div>`;
         }).join('');
     }
-    document.getElementById('estudiantes').innerHTML = html;
+    if(document.getElementById('estudiantes')) document.getElementById('estudiantes').innerHTML = html;
 }
 
 function toggleReporte(id) {
@@ -552,17 +552,19 @@ async function guardarEstudianteEnVivo(id) {
     await fetch(`${API_URL}/admin/estudiante`, { method: 'PUT', body: JSON.stringify(payload) });
     
     const ind = document.getElementById('edicion-indicador');
-    ind.style.display = 'block';
-    ind.style.opacity = '1';
-    
-    clearTimeout(timeoutIndicador);
-    timeoutIndicador = setTimeout(() => {
-        ind.style.opacity = '0';
-        setTimeout(() => {
-            ind.style.display = 'none';
-            tr.style.backgroundColor = 'transparent';
-        }, 500);
-    }, 2000);
+    if(ind) {
+        ind.style.display = 'block';
+        ind.style.opacity = '1';
+        
+        clearTimeout(timeoutIndicador);
+        timeoutIndicador = setTimeout(() => {
+            ind.style.opacity = '0';
+            setTimeout(() => {
+                ind.style.display = 'none';
+                tr.style.backgroundColor = 'transparent';
+            }, 500);
+        }, 2000);
+    }
 }
 
 async function eliminarEstudianteEnVivo(id) {
@@ -665,8 +667,8 @@ async function copiarLista() {
     if(!origen || !destino) return alert('Completa los campos');
     await fetch(`${API_URL}/admin/copiar`, { method: 'POST', body: JSON.stringify({ origen, destino }) });
     alert(`Lista copiada a ${destino}.`);
-    document.getElementById('grupo-origen').value = ''; 
-    document.getElementById('grupo-destino').value = '';
+    if(document.getElementById('grupo-origen')) document.getElementById('grupo-origen').value = ''; 
+    if(document.getElementById('grupo-destino')) document.getElementById('grupo-destino').value = '';
     configurarAccesos();
 }
 
@@ -704,7 +706,9 @@ async function cargarProfesoresAdmin() {
     try {
         const res = await fetch(`${API_URL}/admin/profesores`);
         const profes = await res.json();
-        document.getElementById('admin-lista-profesores').innerHTML = profes.map(p => `
+        const lista = document.getElementById('admin-lista-profesores');
+        if(!lista) return;
+        lista.innerHTML = profes.map(p => `
             <div style="background:#fff; padding:15px; border-radius:8px; margin-bottom:10px; border:1px solid #ddd;">
                 <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
                     <div style="flex:1;"><label style="font-size:0.75rem; font-weight:bold;">👤 Usuario:</label><input type="text" id="edit_prof_user_${p.id}" value="${p.username}" style="margin:0;"></div>

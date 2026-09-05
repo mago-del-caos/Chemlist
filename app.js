@@ -1,4 +1,4 @@
-const APP_VERSION = "v49 - Sincronización de Secciones";
+const APP_VERSION = "v45 - Exportaciones Arregladas";
 console.log("Iniciando Chemlist: " + APP_VERSION);
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -17,6 +17,7 @@ let currentUser = null;
 let alumnosGrupo = [];
 let historialCompleto = [];
 let reportesCompleto = [];
+let estudiantesEditando = [];
 let clasesGlobal = [];
 let timeoutIndicador;
 
@@ -33,14 +34,18 @@ async function login() {
         document.getElementById('app-screen').style.display = 'block';
         document.getElementById('profesor-nombre').innerText = currentUser.nombre;
         document.getElementById('user-role').innerText = currentUser.rol.toUpperCase();
-        
-        const d = new Date();
-        document.getElementById('fecha').value = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().split('T')[0];
-        
+        document.getElementById('fecha').valueAsDate = new Date();
         configurarAccesos();
     } else { 
         alert("Credenciales incorrectas"); 
     }
+}
+
+function parseModalidad(mod) {
+    if (!mod) return { base: 'General', nivel: '' };
+    if (mod.includes('Multicultural ingles')) return { base: 'Multicultural Inglés', nivel: '' };
+    if (mod.includes('Multicultural frances')) return { base: 'Multicultural Francés', nivel: '' };
+    return { base: mod, nivel: '' };
 }
 
 async function configurarAccesos() {
@@ -54,8 +59,13 @@ async function configurarAccesos() {
     }
 
     try {
-        const res = await fetch(`${API_URL}/grupos?t=${Date.now()}`);
-        clasesGlobal = await res.json(); 
+        const res = await fetch(`${API_URL}/grupos`);
+        let rawClases = await res.json(); 
+        
+        clasesGlobal = rawClases.map(c => {
+            if(c.seccion === 'All') c.seccion = 'General';
+            return c;
+        });
         
         let htmlSelect = '<option value="">Selecciona la clase...</option>';
         const permitidos = (currentUser.grupos || '').split(',');
@@ -74,7 +84,7 @@ async function configurarAccesos() {
             const parts = opt.split('|');
             const g = parts[0];
             const m = parts[1] || 'General';
-            const sec = parts[2] && parts[2] !== 'General' && parts[2] !== 'All' ? ` (Sec: ${parts[2]})` : '';
+            const sec = parts[2] && parts[2] !== 'General' ? ` (Sec: ${parts[2]})` : '';
             htmlSelect += `<option value="${opt}">${g} - ${m}${sec}</option>`;
         });
         if(document.getElementById('grupo-select')) document.getElementById('grupo-select').innerHTML = htmlSelect;
@@ -91,19 +101,10 @@ async function configurarAccesos() {
         let opcionesAdmin = '<option value="">Selecciona un grupo...</option>' + todosLosGruposUnicos.map(g => `<option value="${g}">${g}</option>`).join('');
         
         if(document.getElementById('admin-grupo-select')) document.getElementById('admin-grupo-select').innerHTML = opcionesAdmin;
+        if(document.getElementById('edicion-grupo-select')) document.getElementById('edicion-grupo-select').innerHTML = opcionesAdmin;
         if(document.getElementById('admin-borrar-grupo-select')) document.getElementById('admin-borrar-grupo-select').innerHTML = opcionesAdmin;
         if(document.getElementById('admin-masivo-grupo-select')) document.getElementById('admin-masivo-grupo-select').innerHTML = opcionesAdmin;
         if(document.getElementById('materia-grupo-origen')) document.getElementById('materia-grupo-origen').innerHTML = opcionesAdmin;
-
-        // NUEVO: El select de Edición ahora incluye la materia para no mezclar alumnos
-        let opcionesEdicion = '<option value="">Selecciona la clase a editar...</option>';
-        let clasesEdicionUnicas = new Set();
-        clasesGlobal.forEach(c => clasesEdicionUnicas.add(`${c.grupo}|${c.materia||''}`));
-        Array.from(clasesEdicionUnicas).sort().forEach(opt => {
-            const [g, m] = opt.split('|');
-            opcionesEdicion += `<option value="${opt}">${g} - ${m || 'General'}</option>`;
-        });
-        if(document.getElementById('edicion-grupo-select')) document.getElementById('edicion-grupo-select').innerHTML = opcionesEdicion;
 
         cargarHistorial();
         cargarReportes();
@@ -113,7 +114,7 @@ async function configurarAccesos() {
             cargarProfesoresAdmin();
         }
     } catch(e) {
-        console.error("Error al configurar accesos", e);
+        console.error("Error al configurar accesos iniciales", e);
     }
 }
 
@@ -180,23 +181,27 @@ async function cargarAlumnos() {
     let url = `${API_URL}/estudiantes?grupo=${grupo}`;
     if(materia) url += `&materia=${materia}`;
     if(seccion) url += `&seccion=${seccion}`;
-    url += `&t=${Date.now()}`;
     
     const res = await fetch(url);
-    alumnosGrupo = await res.json();
+    let rawAlumnos = await res.json();
     
-    const gruposSeccion = alumnosGrupo.reduce((acc, a) => {
-        const sec = (a.seccion && a.seccion !== 'All' && a.seccion !== 'General') ? a.seccion : 'General';
-        if(!acc[sec]) acc[sec] = [];
-        acc[sec].push(a);
+    alumnosGrupo = rawAlumnos.map(a => {
+        if(a.seccion === 'All') a.seccion = 'General';
+        return a;
+    });
+    
+    const gruposModalidad = alumnosGrupo.reduce((acc, a) => {
+        const mod = a.modalidad || 'General';
+        if(!acc[mod]) acc[mod] = [];
+        acc[mod].push(a);
         return acc;
     }, {});
 
     let html = '';
-    for (const sec in gruposSeccion) {
-        html += `<h4 style="margin-top:15px; margin-bottom:10px; color:#8E44AD; border-bottom:2px solid #8E44AD; padding-bottom:5px;">📂 Sección: ${sec}</h4>`;
-        html += gruposSeccion[sec].map(a => {
-            let tags = (a.modalidad && a.modalidad !== 'General') ? `<span class="modalidad-tag" style="background:#eafaf1; color:var(--gr); font-weight:bold;">${a.modalidad}</span>` : '';
+    for (const mod in gruposModalidad) {
+        html += `<h4 style="margin-top:15px; margin-bottom:10px; color:var(--gr); border-bottom:2px solid var(--yw); padding-bottom:5px;">🏫 ${mod}</h4>`;
+        html += gruposModalidad[mod].map(a => {
+            let tags = (a.seccion && a.seccion !== 'General') ? `<span class="modalidad-tag" style="background:#eafaf1; color:#8E44AD; font-weight:bold;">Sec: ${a.seccion}</span>` : '';
             return `
             <div class="student-row">
                 <strong><a href="#" onclick="verReporteEstudianteDesdeLista('${a.nombre}'); return false;" style="color:var(--nav); text-decoration:none; border-bottom:1px dashed var(--nav); cursor:pointer;">${a.nombre}</a></strong> 
@@ -240,17 +245,9 @@ async function guardarAsistencia() {
     if (!hora) return alert("⚠️ Por favor selecciona la hora de la clase antes de guardar.");
 
     const asistencias = alumnosGrupo.map(a => ({ estudiante_id: a.id, estado: document.querySelector(`input[name="est_${a.id}"]:checked`).value }));
-    try {
-        const res = await fetch(`${API_URL}/asistencia`, { method: 'POST', body: JSON.stringify({ fecha, hora, asistencias }) });
-        if(res.ok) {
-            alert('✅ Asistencia registrada en la nube por hora.');
-            cargarHistorial();
-        } else {
-            alert('❌ Error de Cloudflare: No se pudo guardar. Intenta de nuevo.');
-        }
-    } catch(err) {
-        alert('❌ Error de conexión: ' + err.message);
-    }
+    await fetch(`${API_URL}/asistencia`, { method: 'POST', body: JSON.stringify({ fecha, hora, asistencias }) });
+    alert('✅ Asistencia registrada en la nube por hora.');
+    cargarHistorial();
 }
 
 function toggleMaterias(origen) {
@@ -271,8 +268,14 @@ function getDiaSemana(fechaStr) {
 
 async function cargarHistorial() {
     try {
-        const res = await fetch(`${API_URL}/asistencia-historial?t=${Date.now()}`);
+        const res = await fetch(`${API_URL}/asistencia-historial`);
         let data = await res.json();
+        
+        data = data.map(r => {
+            if(r.seccion === 'All') r.seccion = 'General';
+            return r;
+        });
+
         if (currentUser.rol === 'profesor') {
             const perms = (currentUser.grupos || '').split(',');
             data = data.filter(r => perms.includes(r.grupo) || perms.includes(`${r.grupo}|${r.materia||''}`) || perms.includes(`${r.grupo}|${r.materia||''}|${r.seccion||''}`));
@@ -304,20 +307,16 @@ function renderizarTablaHistorial(datos) {
     const tabla = document.getElementById('tabla-historial');
     
     if(vista === 'lista') {
-        if(datos.length === 0) {
-            tabla.innerHTML = '<thead><tr><th>Día</th><th>Fecha</th><th>Hora</th><th>Grupo</th><th>Materia</th><th>Sección</th><th>Modalidad</th><th>Nombre</th><th>Estado</th></tr></thead><tbody><tr><td colspan="9" style="text-align:center; padding:20px; color:#555;">No hay registros.</td></tr></tbody>';
-        } else {
-            tabla.innerHTML = '<thead><tr><th>Día</th><th>Fecha</th><th>Hora</th><th>Grupo</th><th>Materia</th><th>Sección</th><th>Modalidad</th><th>Nombre</th><th>Estado</th></tr></thead><tbody>' + 
-            datos.map(r => {
-                let color = r.estado === 'Presente' ? 'var(--gr)' : r.estado === 'Falta' ? '#D32F2F' : '#007BFF';
-                let bgFalta = r.estado === 'Falta' ? 'background-color:#ffe6e6;' : '';
-                let seccionLabel = (!r.seccion || r.seccion === 'All' || r.seccion === 'General') ? 'General' : r.seccion;
-                return `<tr><td>${getDiaSemana(r.fecha)}</td><td>${r.fecha}</td><td>${r.hora || '-'}</td><td><strong>${r.grupo}</strong></td><td>${r.materia || 'General'}</td><td>${seccionLabel}</td><td>${r.modalidad || 'Ad lucem'}</td><td><a href="#" onclick="verReporteEstudiante('${r.nombre}', 'historial'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.nombre}</a></td><td style="color:${color}; font-weight:bold; ${bgFalta}">${r.estado}</td></tr>`;
-            }).join('') + '</tbody>';
-        }
+        tabla.innerHTML = '<thead><tr><th>Día</th><th>Fecha</th><th>Hora</th><th>Grupo</th><th>Materia</th><th>Sección</th><th>Modalidad</th><th>Nombre</th><th>Estado</th></tr></thead><tbody>' + 
+        datos.map(r => {
+            let color = r.estado === 'Presente' ? 'var(--gr)' : r.estado === 'Falta' ? '#D32F2F' : '#007BFF';
+            let bgFalta = r.estado === 'Falta' ? 'background-color:#ffe6e6;' : '';
+            let seccionLabel = (!r.seccion || r.seccion === 'General') ? 'General' : r.seccion;
+            return `<tr><td>${getDiaSemana(r.fecha)}</td><td>${r.fecha}</td><td>${r.hora || '-'}</td><td><strong>${r.grupo}</strong></td><td>${r.materia || 'General'}</td><td>${seccionLabel}</td><td>${r.modalidad || 'Ad lucem'}</td><td><a href="#" onclick="verReporteEstudiante('${r.nombre}', 'historial'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.nombre}</a></td><td style="color:${color}; font-weight:bold; ${bgFalta}">${r.estado}</td></tr>`;
+        }).join('') + '</tbody>';
     } else {
         if(datos.length === 0) {
-            tabla.innerHTML = '<tbody><tr><td style="text-align:center; padding:20px; color:#555;">No hay datos en este rango.</td></tr></tbody>';
+            tabla.innerHTML = '<tbody><tr><td style="text-align:center; padding:20px;">No hay datos en este rango.</td></tr></tbody>';
             return;
         }
         
@@ -337,6 +336,7 @@ function renderizarTablaHistorial(datos) {
                     diaStr: getDiaSemana(r.fecha),
                     nombre: r.nombre,
                     modalidad: r.modalidad || 'Ad lucem',
+                    seccion: (!r.seccion || r.seccion === 'General') ? 'General' : r.seccion,
                     asistencias: {}
                 };
             }
@@ -349,16 +349,15 @@ function renderizarTablaHistorial(datos) {
                 estado: estadoCorto, 
                 colorText: colorText, 
                 bgFalta: bgFalta, 
-                materia: r.materia || 'Gral',
-                seccion: (!r.seccion || r.seccion === 'All' || r.seccion === 'General') ? '' : r.seccion
+                materia: r.materia || 'Gral' 
             };
         });
 
-        // NUEVO DISEÑO MATRIZ: Se omite la columna sección general, se inyecta en la celda individual
         let html = '<thead><tr>';
         html += `<th style="background:var(--nav); color:#fff; border:1px solid #ccc; padding:10px; min-width:100px; text-align:center;">Día</th>`;
         html += `<th style="background:var(--nav); color:#fff; border:1px solid #ccc; padding:10px; min-width:180px;">Estudiante</th>`;
         html += `<th style="background:var(--nav); color:#fff; border:1px solid #ccc; padding:10px; text-align:center;">Modalidad</th>`;
+        html += `<th style="background:var(--nav); color:#fff; border:1px solid #ccc; padding:10px; text-align:center;">Sección</th>`;
         
         columnasHora.forEach(h => { 
             html += `<th style="text-align:center; background:var(--nav); color:#fff; font-size:0.85rem; border:1px solid #ccc; padding:10px; min-width:80px;">${h}</th>`; 
@@ -373,15 +372,15 @@ function renderizarTablaHistorial(datos) {
             html += `<td style="border:1px solid #ccc; text-align:center; vertical-align:middle;"><strong>${row.diaStr}</strong><br><span style="font-size:0.75rem; color:#666;">${row.fecha}</span></td>`;
             html += `<td style="border:1px solid #ccc; vertical-align:middle;"><strong>${row.nombre}</strong></td>`;
             html += `<td style="border:1px solid #ccc; text-align:center; vertical-align:middle;">${row.modalidad}</td>`;
+            html += `<td style="border:1px solid #ccc; text-align:center; vertical-align:middle; color:#8E44AD; font-weight:bold;">${row.seccion}</td>`;
             
             columnasHora.forEach(h => {
                 let cell = row.asistencias[h];
                 if(cell) {
                     let bgStyle = cell.bgFalta ? `background-color:${cell.bgFalta};` : '';
-                    let secHtml = cell.seccion ? `<br><span style="font-size:0.65rem; color:#8E44AD; font-weight:bold; white-space:nowrap; background:#f4e8fb; padding:2px 4px; border-radius:3px;">Sec: ${cell.seccion}</span>` : '';
                     html += `<td style="text-align:center; vertical-align:middle; border:1px solid #ccc; ${bgStyle}">
                         <span style="color:${cell.colorText}; font-weight:bold; font-size:1.1rem;">${cell.estado}</span><br>
-                        <span style="font-size:0.7rem; color:#666; white-space:nowrap;">${cell.materia}</span>${secHtml}
+                        <span style="font-size:0.7rem; color:#666; white-space:nowrap;">${cell.materia}</span>
                     </td>`;
                 } else {
                     html += `<td style="text-align:center; vertical-align:middle; border:1px solid #ccc; background-color:#f9f9f9; color:#aaa;">-</td>`;
@@ -411,14 +410,14 @@ function imprimirExcel() {
         c.style.verticalAlign = 'middle';
         c.style.textAlign = 'center';
         
-        if (c.style.backgroundColor) {
-            c.setAttribute('bgcolor', c.style.backgroundColor);
-        } else if (c.innerHTML.includes('>F<') || c.innerHTML.includes('Falta')) {
+        if (c.innerHTML.includes('>F<') || c.innerHTML.includes('Falta')) {
             c.setAttribute('bgcolor', '#FFCDD2');
             c.style.backgroundColor = '#FFCDD2';
         }
         c.innerHTML = c.innerHTML.replace(/<br\s*[\/]?>/gi, ' | ');
     });
+
+    let tablaHTML = clone.innerHTML.replace(/var\(--nav\)/g, '#003366').replace(/var\(--gr\)/g, '#2E8B57').replace(/var\(--yw\)/g, '#FFC107');
 
     let xmlData = `
     <xml>
@@ -444,13 +443,12 @@ function imprimirExcel() {
         <style>
             table { border-collapse: collapse; font-family: Arial, sans-serif; } 
             th, td { border: 1px solid black; padding: 5px; } 
-            th { background-color: #003366; color: white; font-weight: bold; }
         </style>
     </head>
-    <body><table>${clone.innerHTML}</table></body>
+    <body><table>${tablaHTML}</table></body>
     </html>`;
     
-    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+    const blob = new Blob(['\ufeff', html], { type: 'application/vnd.ms-excel;charset=utf-8' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
     link.download = `Reporte_${vista}_Chemlist_${new Date().toISOString().split('T')[0]}.xls`;
@@ -461,13 +459,32 @@ function imprimirPDF() {
     const elemento = document.getElementById('area-impresion');
     const titulo = document.getElementById('titulo-pdf');
     titulo.style.display = 'block';
-    html2pdf().set({ margin: 5, filename: `Asistencias_Chemlist_${new Date().toISOString().split('T')[0]}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'legal', orientation: 'landscape' } }).from(elemento).save().then(() => titulo.style.display = 'none');
+    
+    const origWidth = elemento.style.width;
+    elemento.style.width = 'max-content';
+
+    html2pdf().set({ 
+        margin: 5, 
+        filename: `Asistencias_Chemlist_${new Date().toISOString().split('T')[0]}.pdf`, 
+        image: { type: 'jpeg', quality: 0.98 }, 
+        html2canvas: { scale: 2, useCORS: true }, 
+        jsPDF: { unit: 'mm', format: 'a3', orientation: 'landscape' } 
+    }).from(elemento).save().then(() => {
+        titulo.style.display = 'none';
+        elemento.style.width = origWidth;
+    });
 }
 
 async function cargarReportes() {
     try {
-        const res = await fetch(`${API_URL}/reportes?t=${Date.now()}`);
+        const res = await fetch(`${API_URL}/reportes`);
         let data = await res.json();
+        
+        data = data.map(r => {
+            if(r.seccion === 'All') r.seccion = 'General';
+            return r;
+        });
+
         if (currentUser.rol === 'profesor') {
             const perms = (currentUser.grupos || '').split(',');
             data = data.filter(r => perms.includes(r.grupo) || perms.includes(`${r.grupo}|${r.materia||''}`));
@@ -496,7 +513,7 @@ function aplicarFiltrosReportes() {
 
 function renderizarTablaReportes(datos) {
     document.getElementById('tabla-reportes').innerHTML = datos.map(r => {
-        let seccionLabel = (!r.seccion || r.seccion === 'All' || r.seccion === 'General') ? 'General' : r.seccion;
+        let seccionLabel = (!r.seccion || r.seccion === 'General') ? 'General' : r.seccion;
         return `<tr><td>${r.fecha}</td><td><b>${r.grupo}</b></td><td>${r.materia || 'General'}</td><td>${seccionLabel}</td><td><a href="#" onclick="verReporteEstudiante('${r.estudiante_nombre}', 'reportes'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.estudiante_nombre}</a></td><td>${r.motivo}</td><td><i>${r.profesor_nombre}</i></td></tr>`;
     }).join('');
 }
@@ -505,34 +522,43 @@ function imprimirPDFReportes() {
     const elemento = document.getElementById('area-impresion-reportes');
     const titulo = document.getElementById('titulo-pdf-rep');
     titulo.style.display = 'block';
-    html2pdf().set({ margin: 10, filename: `Reportes_Chemlist_${new Date().toISOString().split('T')[0]}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } }).from(elemento).save().then(() => titulo.style.display = 'none');
+    
+    const origWidth = elemento.style.width;
+    elemento.style.width = 'max-content';
+
+    html2pdf().set({ 
+        margin: 10, 
+        filename: `Reportes_Chemlist_${new Date().toISOString().split('T')[0]}.pdf`, 
+        image: { type: 'jpeg', quality: 0.98 }, 
+        html2canvas: { scale: 2, useCORS: true }, 
+        jsPDF: { unit: 'mm', format: 'a3', orientation: 'landscape' } 
+    }).from(elemento).save().then(() => {
+        titulo.style.display = 'none';
+        elemento.style.width = origWidth;
+    });
 }
 
-/* --- EDICIÓN EN TIEMPO REAL Y MASIVA --- */
+/* --- EDICIÓN EN TIEMPO REAL --- */
 async function cargarEdicionGrupo() {
-    const val = document.getElementById('edicion-grupo-select').value;
+    const grupo = document.getElementById('edicion-grupo-select').value;
     const container = document.getElementById('edicion-lista-estudiantes');
-    const panelMasivo = document.getElementById('edicion-masiva-panel');
-    
-    if(panelMasivo) panelMasivo.style.display = val ? 'block' : 'none';
-
-    if(!val) { 
-        container.innerHTML = '<p style="text-align:center; padding:20px; color:#777;">Selecciona un grupo y materia arriba para editar.</p>'; 
+    if(!grupo) { 
+        container.innerHTML = '<p style="text-align:center; padding:20px; color:#777;">Selecciona un grupo arriba para comenzar a editar.</p>'; 
         return; 
     }
     
-    // NUEVO: La edición ahora filtra exactamente por la materia seleccionada
-    const [grupo, materia] = val.split('|');
     container.innerHTML = '<p style="text-align:center; padding:20px;">Cargando estudiantes...</p>';
-    
     try {
-        let url = `${API_URL}/estudiantes?grupo=${grupo}`;
-        if (materia) url += `&materia=${materia}`;
-        const res = await fetch(url + `&t=${Date.now()}`);
-        const estudiantes = await res.json();
+        const res = await fetch(`${API_URL}/estudiantes?grupo=${grupo}`);
+        let rawEstudiantes = await res.json();
+        
+        const estudiantes = rawEstudiantes.map(e => {
+            if(e.seccion === 'All') e.seccion = 'General';
+            return e;
+        });
         
         if(estudiantes.length === 0) {
-            container.innerHTML = '<p style="text-align:center; padding:20px;">No hay alumnos en este filtro.</p>';
+            container.innerHTML = '<p style="text-align:center; padding:20px;">No hay alumnos en este grupo.</p>';
             return;
         }
 
@@ -572,7 +598,7 @@ async function cargarEdicionGrupo() {
                 
                 <td style="padding:5px;">
                     <select id="envivo_sec_${e.id}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid #8E44AD; color:#8E44AD; font-weight:bold; border-radius:4px; padding:8px; width:100%;">
-                        <option value="General" ${(!e.seccion || e.seccion === 'General' || e.seccion === 'All') ? 'selected' : ''}>General (Todos)</option>
+                        <option value="General" ${(!e.seccion || e.seccion === 'General') ? 'selected' : ''}>General (Todos)</option>
                         <option value="Intermedios" ${e.seccion === 'Intermedios' ? 'selected' : ''}>Intermedios</option>
                         <option value="Avanzados" ${e.seccion === 'Avanzados' ? 'selected' : ''}>Avanzados</option>
                         <option value="Informática 1" ${e.seccion === 'Informática 1' ? 'selected' : ''}>Informática 1</option>
@@ -628,45 +654,6 @@ async function eliminarEstudianteEnVivo(id) {
     cargarEdicionGrupo(); 
 }
 
-async function asignarMateriaMasivaEnEdicion() {
-    const val = document.getElementById('edicion-grupo-select').value;
-    const materia = document.getElementById('edicion-masiva-materia').value.trim();
-
-    if(!val) return alert('⚠️ Selecciona un grupo arriba primero.');
-    if(!materia) return alert('⚠️ Escribe el nombre de la materia a aplicar.');
-
-    const [grupo, mat_actual] = val.split('|');
-
-    if(confirm(`⚠️ ¿Seguro que quieres asignar la materia "${materia}" a TODOS los alumnos del filtro seleccionado?`)) {
-        try {
-            const res = await fetch(`${API_URL}/admin/grupo-masivo`, {
-                method: 'PUT',
-                body: JSON.stringify({
-                    grupo_actual: grupo,
-                    nuevo_grupo: grupo,
-                    nueva_materia: materia
-                })
-            });
-            
-            if(res.ok) {
-                const ind = document.getElementById('edicion-indicador');
-                if(ind) {
-                    ind.style.display = 'block';
-                    ind.style.opacity = '1';
-                    setTimeout(() => { ind.style.opacity = '0'; setTimeout(() => ind.style.display = 'none', 500); }, 2000);
-                }
-                document.getElementById('edicion-masiva-materia').value = '';
-                cargarEdicionGrupo();
-                configurarAccesos();
-            } else {
-                alert('Error en el servidor al guardar masivamente.');
-            }
-        } catch(e) {
-            alert('Error de conexión: ' + e.message);
-        }
-    }
-}
-
 /* --- ADMIN MAESTRO --- */
 function generarHTMLPermisos(id, rol, valoresStr) {
     if(rol === 'admin') return `<div style="display:flex; align-items:center; height:100%;"><input type="hidden" id="${id}" value="ALL"><span style="width:100%; padding:10px; background:#eafaf1; border-radius:8px; color:var(--gr); font-weight:bold; text-align:center;">✅ Acceso Total (Admin)</span></div>`;
@@ -679,7 +666,7 @@ function generarHTMLPermisos(id, rol, valoresStr) {
         clasesGlobal.forEach(c => {
             const baseStr = `${c.grupo}|${c.materia||''}`;
             opciones.push(baseStr);
-            if(c.seccion && c.seccion !== 'General' && c.seccion !== 'All') opciones.push(`${baseStr}|${c.seccion}`);
+            if(c.seccion) opciones.push(`${baseStr}|${c.seccion}`);
         });
         opciones = [...new Set(opciones)].sort();
     }
@@ -690,22 +677,15 @@ function generarHTMLPermisos(id, rol, valoresStr) {
     opciones.forEach(opt => {
         const checked = (valoresArray.includes(opt) || valoresStr === 'ALL') ? 'checked' : '';
         let labelOpt = opt;
-        let isSection = opt.split('|').length === 3;
-        
-        // DISEÑO VISUAL PARA NO CONFUNDIR SECCIONES CON LA CLASE COMPLETA
-        let color = isSection ? '#8E44AD' : '#003366';
-        let bg = isSection ? '#f4e8fb' : '#e6f0fa';
-        let fw = isSection ? 'bold' : 'normal';
-
         if(rol === 'profesor') {
             const parts = opt.split('|');
-            if(isSection) {
+            if(parts.length === 3 && parts[2]) {
                 labelOpt = `${parts[0]} - ${parts[1]} (Sec: ${parts[2]})`;
             } else {
                 labelOpt = `${parts[0]} - ${parts[1]||'Gral'} (Toda la clase)`;
             }
         }
-        html += `<label style="cursor:pointer; display:flex; align-items:center; gap:5px; background:${bg}; color:${color}; font-weight:${fw}; padding:6px; border-radius:4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 1px solid ${color}40;" title="${labelOpt}"><input type="checkbox" class="chk_${id}" value="${opt}" ${checked}> ${labelOpt}</label>`;
+        html += `<label style="cursor:pointer; display:flex; align-items:center; gap:5px; background:#f4f7f6; padding:4px; border-radius:4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${labelOpt}"><input type="checkbox" class="chk_${id}" value="${opt}" ${checked}> ${labelOpt}</label>`;
     });
     html += `</div>`;
     return html;
@@ -745,7 +725,7 @@ async function agregarGrupoCompleto() {
     document.getElementById('nuevo-nombres-masivo').value = '';
     document.getElementById('nuevo-grupo').value = '';
     document.getElementById('nuevo-materia').value = '';
-    if(document.getElementById('nuevo-seccion')) document.getElementById('nuevo-seccion').value = 'General';
+    document.getElementById('nuevo-seccion').value = '';
     configurarAccesos();
 }
 
@@ -758,7 +738,7 @@ async function asignarMateriaAGrupo() {
     await fetch(`${API_URL}/admin/asignar-materia`, { method: 'POST', body: JSON.stringify({ grupo, materia, seccion }) });
     alert(`✅ Clase de "${materia}" asignada al grupo ${grupo} con éxito.`);
     document.getElementById('materia-nueva').value = '';
-    if(document.getElementById('seccion-nueva')) document.getElementById('seccion-nueva').value = 'General';
+    document.getElementById('seccion-nueva').value = '';
     configurarAccesos();
 }
 
@@ -805,7 +785,7 @@ async function eliminarGrupoEntero() {
 
 async function cargarProfesoresAdmin() {
     try {
-        const res = await fetch(`${API_URL}/admin/profesores?t=${Date.now()}`);
+        const res = await fetch(`${API_URL}/admin/profesores`);
         const profes = await res.json();
         const lista = document.getElementById('admin-lista-profesores');
         if(!lista) return;

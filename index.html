@@ -195,21 +195,19 @@
                 <div style="display:flex; gap:5px; flex-wrap:wrap;">
                     <select id="materia-grupo-origen" style="flex:1; min-width:150px;"><option value="">Selecciona grupo base...</option></select>
                     <input type="text" id="materia-nueva" placeholder="Nueva Materia (ej. Biología)" style="flex:1; min-width:150px;">
-                    
                     <select id="seccion-nueva" style="flex:1; min-width:150px;">
-                        <option value="General">Sección: General (Todos)</option>
+                        <option value="General">General (Todos)</option>
                         <option value="Intermedios">Intermedios</option>
                         <option value="Avanzados">Avanzados</option>
                         <option value="Informática 1">Informática 1</option>
                         <option value="Informática 2">Informática 2</option>
                     </select>
-
                     <button class="btn" style="background:#8E44AD; color:#FFF; flex:1; min-width:150px;" onclick="asignarMateriaAGrupo()">Crear Clase</button>
                 </div>
             </div>
 
             <div class="admin-panel-section" style="border-left: 5px solid var(--gr);">
-                <h4 style="color:var(--gr);">➕ Alta de Grupo Base (Lista Masiva)</h4>
+                <h4 style="color:var(--gr);">➕ Alta de Grupo Base (Lista desde Excel/Word)</h4>
                 <textarea id="nuevo-nombres-masivo" rows="6" placeholder="Pega aquí la lista de alumnos..."></textarea>
                 <div style="display:flex; gap:5px; margin-bottom:5px;">
                     <input type="text" id="nuevo-grupo" placeholder="Grupo (ej. 6A)" style="flex:1;">
@@ -222,9 +220,8 @@
                         <option value="Multicultural Inglés">Multicultural Inglés</option>
                         <option value="Multicultural Francés">Multicultural Francés</option>
                     </select>
-                    
                     <select id="nuevo-seccion" style="flex:1;">
-                        <option value="General">Sección: General (Todos)</option>
+                        <option value="General">General (Todos)</option>
                         <option value="Intermedios">Intermedios</option>
                         <option value="Avanzados">Avanzados</option>
                         <option value="Informática 1">Informática 1</option>
@@ -249,16 +246,13 @@
                     <select id="admin-masivo-grupo-select" style="flex:1; min-width:150px;"><option value="">Selecciona grupo actual...</option></select>
                     <input type="text" id="admin-masivo-nuevo-grupo" placeholder="Cambiar a Grupo..." style="flex:1; min-width:150px;">
                     <input type="text" id="admin-masivo-materia" placeholder="Cambiar a Materia..." style="flex:1; min-width:150px;">
-                    
                     <select id="admin-masivo-seccion" style="flex:1; min-width:150px;">
-                        <option value="">Mantener Sección Actual</option>
-                        <option value="General">Cambiar a: General (Todos)</option>
-                        <option value="Intermedios">Cambiar a: Intermedios</option>
-                        <option value="Avanzados">Cambiar a: Avanzados</option>
-                        <option value="Informática 1">Cambiar a: Informática 1</option>
-                        <option value="Informática 2">Cambiar a: Informática 2</option>
+                        <option value="General">General (Todos)</option>
+                        <option value="Intermedios">Intermedios</option>
+                        <option value="Avanzados">Avanzados</option>
+                        <option value="Informática 1">Informática 1</option>
+                        <option value="Informática 2">Informática 2</option>
                     </select>
-
                     <button class="btn" style="background:#007BFF; flex:1; min-width:150px;" onclick="actualizarGrupoMasivo()">Aplicar a todos</button>
                 </div>
             </div>
@@ -273,7 +267,6 @@
         </div>
     </div>
     
-    <!-- AQUÍ ESTÁ EL TRUCO QUE ROMPE LA CACHÉ: Le pedimos el archivo v44 -->
     <script src="app.js?v=44"></script>
     <script>
         if ('serviceWorker' in navigator) {

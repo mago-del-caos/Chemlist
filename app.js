@@ -1,4 +1,4 @@
-const APP_VERSION = "v42 - Secciones y Materias Dropdown";
+const APP_VERSION = "v43 - Excel Plano";
 console.log("Iniciando Chemlist: " + APP_VERSION);
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -313,11 +313,13 @@ function renderizarTablaHistorial(datos) {
         
         let rowMap = {};
         datos.forEach(r => {
-            let key = `${r.fecha}|${r.nombre}`;
+            let key = `${r.fecha}|${r.grupo}|${r.materia||'General'}|${r.seccion||'All'}|${r.nombre}`;
             if(!rowMap[key]) {
                 rowMap[key] = {
                     fecha: r.fecha,
                     diaStr: getDiaSemana(r.fecha),
+                    grupo: r.grupo,
+                    materia: r.materia || 'General',
                     nombre: r.nombre,
                     modalidad: r.modalidad || 'Ad lucem',
                     seccion: (r.seccion === 'All' || !r.seccion) ? 'All' : r.seccion,
@@ -377,31 +379,84 @@ function renderizarTablaHistorial(datos) {
     }
 }
 
+// Nueva función de Excel Plano y Perfecto
 function imprimirExcel() {
     const vista = document.getElementById('vista-historial').value;
     const tabla = document.getElementById('tabla-historial');
     if(!tabla || tabla.rows.length === 0) return alert('No hay datos para exportar.');
 
-    let clone = tabla.cloneNode(true);
-    let colCount = clone.rows[0].cells.length;
-
-    const links = clone.querySelectorAll('a');
-    links.forEach(a => { const span = document.createElement('span'); span.innerText = a.innerText; a.parentNode.replaceChild(span, a); });
+    const grupo = document.getElementById('filtro-grupo').value.toLowerCase();
+    const materia = document.getElementById('filtro-materia').value.toLowerCase();
+    const estudiante = document.getElementById('filtro-estudiante').value.toLowerCase().trim();
+    const fechas = obtenerFechasFiltro('historial');
     
-    const celdas = clone.querySelectorAll('th, td');
-    celdas.forEach(c => {
-        c.style.border = '1px solid #000000';
-        c.style.verticalAlign = 'middle';
-        c.style.textAlign = 'center';
-        
-        if (c.style.backgroundColor) {
-            c.setAttribute('bgcolor', c.style.backgroundColor);
-        } else if (c.innerHTML.includes('>F<') || c.innerHTML.includes('Falta')) {
-            c.setAttribute('bgcolor', '#FFCDD2');
-            c.style.backgroundColor = '#FFCDD2';
-        }
-        c.innerHTML = c.innerHTML.replace(/<br\s*[\/]?>/gi, ' | ');
+    const filtrados = historialCompleto.filter(r => {
+        const matchGrupo = grupo === '' || r.grupo.toLowerCase().includes(grupo);
+        const matchEstudiante = estudiante === '' || r.nombre.toLowerCase().includes(estudiante);
+        let matchFecha = true;
+        if (fechas.inicio && fechas.fin) matchFecha = r.fecha >= fechas.inicio && r.fecha <= fechas.fin;
+        const matchMateria = materia === '' || (r.materia && r.materia.toLowerCase().includes(materia));
+        return matchGrupo && matchMateria && matchEstudiante && matchFecha;
     });
+
+    if(filtrados.length === 0) return alert('No hay datos para exportar.');
+
+    let html = '<table><thead><tr>';
+    let colCount = 0;
+    
+    if (vista === 'lista') {
+        html += '<th>Día</th><th>Fecha</th><th>Hora</th><th>Grupo</th><th>Materia</th><th>Sección</th><th>Modalidad</th><th>Nombre</th><th>Estado</th></tr></thead><tbody>';
+        colCount = 9;
+        filtrados.forEach(r => {
+            let seccionLabel = (r.seccion === 'All' || !r.seccion) ? 'All' : r.seccion;
+            html += `<tr><td>${getDiaSemana(r.fecha)}</td><td>${r.fecha}</td><td>${r.hora || '-'}</td><td>${r.grupo}</td><td>${r.materia || 'General'}</td><td>${seccionLabel}</td><td>${r.modalidad || 'Ad lucem'}</td><td>${r.nombre}</td><td>${r.estado}</td></tr>`;
+        });
+        html += '</tbody></table>';
+    } else {
+        let columnasHora = [...new Set(filtrados.map(r => r.hora||'Sin hora'))];
+        columnasHora.sort((a, b) => {
+            let aPad = a.replace(/^(\d):/, '0$1:');
+            let bPad = b.replace(/^(\d):/, '0$1:');
+            return aPad.localeCompare(bPad);
+        });
+
+        colCount = 7 + columnasHora.length;
+        html += '<th>Día</th><th>Fecha</th><th>Grupo</th><th>Materia</th><th>Sección</th><th>Modalidad</th><th>Estudiante</th>';
+        columnasHora.forEach(h => { html += `<th>${h}</th>`; });
+        html += '</tr></thead><tbody>';
+
+        let rowMap = {};
+        filtrados.forEach(r => {
+            let key = `${r.fecha}|${r.grupo}|${r.materia||'General'}|${r.seccion||'All'}|${r.nombre}`;
+            if(!rowMap[key]) {
+                rowMap[key] = {
+                    diaStr: getDiaSemana(r.fecha),
+                    fecha: r.fecha,
+                    grupo: r.grupo,
+                    materia: r.materia || 'General',
+                    seccion: (r.seccion === 'All' || !r.seccion) ? 'All' : r.seccion,
+                    modalidad: r.modalidad || 'Ad lucem',
+                    nombre: r.nombre,
+                    asistencias: {}
+                };
+            }
+            rowMap[key].asistencias[r.hora||'Sin hora'] = r.estado;
+        });
+
+        let sortedKeys = Object.keys(rowMap).sort((a, b) => a.localeCompare(b));
+        sortedKeys.forEach(k => {
+            let row = rowMap[k];
+            html += `<tr><td>${row.diaStr}</td><td>${row.fecha}</td><td>${row.grupo}</td><td>${row.materia}</td><td>${row.seccion}</td><td>${row.modalidad}</td><td>${row.nombre}</td>`;
+            
+            columnasHora.forEach(h => {
+                let estado = row.asistencias[h] || '-';
+                let estadoCorto = estado === 'Presente' ? 'P' : estado === 'Falta' ? 'F' : estado === 'Justificada' ? 'J' : '-';
+                html += `<td>${estadoCorto}</td>`;
+            });
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+    }
 
     let xmlData = `
     <xml>
@@ -419,24 +474,24 @@ function imprimirExcel() {
      </x:ExcelWorkbook>
     </xml>`;
 
-    let html = `
+    let finalHtml = `
     <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
     <head>
         <meta charset="UTF-8">
         <!--[if gte mso 9]>${xmlData}<![endif]-->
         <style>
             table { border-collapse: collapse; font-family: Arial, sans-serif; } 
-            th, td { border: 1px solid black; padding: 5px; } 
+            th, td { border: 1px solid #000000; padding: 5px; text-align: center; vertical-align: middle; } 
             th { background-color: #003366; color: white; font-weight: bold; }
         </style>
     </head>
-    <body><table>${clone.innerHTML}</table></body>
+    <body>${html}</body>
     </html>`;
     
-    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+    const blob = new Blob([finalHtml], { type: 'application/vnd.ms-excel' });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
-    link.download = `Reporte_${vista}_Chemlist_${new Date().toISOString().split('T')[0]}.xls`;
+    link.download = `Reporte_${vista}_Plano_Chemlist_${new Date().toISOString().split('T')[0]}.xls`;
     link.click();
 }
 
@@ -510,7 +565,6 @@ async function cargarEdicionGrupo() {
             return;
         }
 
-        // Obtener la lista de todas las materias únicas en la escuela para el menú desplegable
         const materiasUnicas = [...new Set(clasesGlobal.map(c => c.materia).filter(m => m))];
 
         let html = '<table style="width:100%; min-width:800px; border-collapse:collapse; font-size:0.9rem;">';
@@ -519,10 +573,9 @@ async function cargarEdicionGrupo() {
         estudiantes.forEach(e => {
             const fallbackOption = ['Ad lucem','360','Multicultural Inglés','Multicultural Francés'].includes(e.modalidad) ? '' : `<option value="${e.modalidad}" selected>${e.modalidad}</option>`;
             
-            // Construir opciones dinámicas de Materias
             let materiaOptions = `<option value="">General (Sin materia)</option>`;
             let matSet = new Set(materiasUnicas);
-            if(e.materia) matSet.add(e.materia); // Asegurar que la materia actual exista en la lista
+            if(e.materia) matSet.add(e.materia); 
             [...matSet].sort().forEach(m => {
                 materiaOptions += `<option value="${m}" ${e.materia === m ? 'selected' : ''}>${m}</option>`;
             });

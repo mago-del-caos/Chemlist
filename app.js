@@ -1,4 +1,4 @@
-const APP_VERSION = "v44 - Purga Definitiva";
+const APP_VERSION = "v44 - Sistema de Secciones Maestro";
 console.log("Iniciando Chemlist: " + APP_VERSION);
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -60,21 +60,15 @@ async function configurarAccesos() {
 
     try {
         const res = await fetch(`${API_URL}/grupos`);
-        let rawClases = await res.json(); 
-        
-        // FILTRO PURIFICADOR: Convierte cualquier 'All' de la base de datos en 'General'
-        clasesGlobal = rawClases.map(c => {
-            if(c.seccion === 'All') c.seccion = 'General';
-            return c;
-        });
+        clasesGlobal = await res.json(); 
         
         let htmlSelect = '<option value="">Selecciona la clase...</option>';
         const permitidos = (currentUser.grupos || '').split(',');
 
         let dropdownOptions = new Set();
         clasesGlobal.forEach(c => {
-            const baseStr = `${c.grupo}\vert{}${c.materia||''}`;
-            const fullStr = `${c.grupo}|${c.materia\vert{}\vert{}''}\vert{}${c.seccion||''}`;
+            const baseStr = `${c.grupo}|${c.materia||''}`;
+            const fullStr = `${c.grupo}|${c.materia||''}|${c.seccion||''}`;
             
             if (currentUser.grupos === 'ALL' || permitidos.includes(c.grupo) || permitidos.includes(baseStr) || permitidos.includes(fullStr)) {
                 dropdownOptions.add(fullStr);
@@ -85,7 +79,7 @@ async function configurarAccesos() {
             const parts = opt.split('|');
             const g = parts[0];
             const m = parts[1] || 'General';
-            const sec = parts[2] && parts[2] !== 'General' ? ` (Sec: ${parts[2]})` : '';
+            const sec = parts[2] && parts[2] !== 'General' && parts[2] !== 'All' ? ` (Sec: ${parts[2]})` : '';
             htmlSelect += `<option value="${opt}">${g} - ${m}${sec}</option>`;
         });
         if(document.getElementById('grupo-select')) document.getElementById('grupo-select').innerHTML = htmlSelect;
@@ -184,12 +178,7 @@ async function cargarAlumnos() {
     if(seccion) url += `&seccion=${seccion}`;
     
     const res = await fetch(url);
-    let rawAlumnos = await res.json();
-    
-    alumnosGrupo = rawAlumnos.map(a => {
-        if(a.seccion === 'All') a.seccion = 'General';
-        return a;
-    });
+    alumnosGrupo = await res.json();
     
     const gruposModalidad = alumnosGrupo.reduce((acc, a) => {
         const mod = a.modalidad || 'General';
@@ -202,10 +191,11 @@ async function cargarAlumnos() {
     for (const mod in gruposModalidad) {
         html += `<h4 style="margin-top:15px; margin-bottom:10px; color:var(--gr); border-bottom:2px solid var(--yw); padding-bottom:5px;">🏫 ${mod}</h4>`;
         html += gruposModalidad[mod].map(a => {
-            let tags = (a.seccion && a.seccion !== 'General') ? `<span class="modalidad-tag" style="background:#eafaf1; color:#8E44AD; font-weight:bold;">Sec: ${a.seccion}</span>` : '';
+            let tags = (a.seccion && a.seccion !== 'General' && a.seccion !== 'All') ? `<span class="modalidad-tag" style="background:#eafaf1; color:#8E44AD; font-weight:bold;">Sec: ${a.seccion}</span>` : '';
             return `
             <div class="student-row">
-                <strong><a href="#" onclick="verReporteEstudianteDesdeLista('${a.nombre}'); return false;" style="color:var(--nav); text-decoration:none; border-bottom:1px dashed var(--nav); cursor:pointer;">${a.nombre}</a></strong>${tags}<br><br>
+                <strong><a href="#" onclick="verReporteEstudianteDesdeLista('${a.nombre}'); return false;" style="color:var(--nav); text-decoration:none; border-bottom:1px dashed var(--nav); cursor:pointer;">${a.nombre}</a></strong> 
+                ${tags}<br><br>
                 <div class="options">
                     <label><input type="radio" name="est_${a.id}" value="Presente" checked> P</label>
                     <label style="color:#D32F2F;"><input type="radio" name="est_${a.id}" value="Falta"> F</label>
@@ -270,15 +260,9 @@ async function cargarHistorial() {
     try {
         const res = await fetch(`${API_URL}/asistencia-historial`);
         let data = await res.json();
-        
-        data = data.map(r => {
-            if(r.seccion === 'All') r.seccion = 'General';
-            return r;
-        });
-
         if (currentUser.rol === 'profesor') {
             const perms = (currentUser.grupos || '').split(',');
-            data = data.filter(r => perms.includes(r.grupo) || perms.includes(`${r.grupo}\vert{}${r.materia||''}`) || perms.includes(`${r.grupo}|${r.materia\vert{}\vert{}''}\vert{}${r.seccion||''}`));
+            data = data.filter(r => perms.includes(r.grupo) || perms.includes(`${r.grupo}|${r.materia||''}`) || perms.includes(`${r.grupo}|${r.materia||''}|${r.seccion||''}`));
         }
         historialCompleto = data;
         aplicarFiltrosHistorial();
@@ -311,8 +295,8 @@ function renderizarTablaHistorial(datos) {
         datos.map(r => {
             let color = r.estado === 'Presente' ? 'var(--gr)' : r.estado === 'Falta' ? '#D32F2F' : '#007BFF';
             let bgFalta = r.estado === 'Falta' ? 'background-color:#ffe6e6;' : '';
-            let seccionLabel = (!r.seccion || r.seccion === 'General') ? 'General' : r.seccion;
-            return `<tr><td>${getDiaSemana(r.fecha)}</td><td>${r.fecha}</td><td>${r.hora \vert{}\vert{} '-'}</td><td><strong>${r.grupo}</strong></td><td>${r.materia \vert{}\vert{} 'General'}</td><td>${seccionLabel}</td><td>${r.modalidad \vert{}\vert{} 'Ad lucem'}</td><td><a href="#" onclick="verReporteEstudiante('${r.nombre}', 'historial'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.nombre}</a></td><td style="color:${color}; font-weight:bold; ${bgFalta}">${r.estado}</td></tr>`;
+            let seccionLabel = (!r.seccion || r.seccion === 'All' || r.seccion === 'General') ? 'General' : r.seccion;
+            return `<tr><td>${getDiaSemana(r.fecha)}</td><td>${r.fecha}</td><td>${r.hora || '-'}</td><td><strong>${r.grupo}</strong></td><td>${r.materia || 'General'}</td><td>${seccionLabel}</td><td>${r.modalidad || 'Ad lucem'}</td><td><a href="#" onclick="verReporteEstudiante('${r.nombre}', 'historial'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.nombre}</a></td><td style="color:${color}; font-weight:bold; ${bgFalta}">${r.estado}</td></tr>`;
         }).join('') + '</tbody>';
     } else {
         if(datos.length === 0) {
@@ -329,14 +313,14 @@ function renderizarTablaHistorial(datos) {
         
         let rowMap = {};
         datos.forEach(r => {
-            let key = `${r.fecha}\vert{}${r.nombre}`;
+            let key = `${r.fecha}|${r.nombre}`;
             if(!rowMap[key]) {
                 rowMap[key] = {
                     fecha: r.fecha,
                     diaStr: getDiaSemana(r.fecha),
                     nombre: r.nombre,
                     modalidad: r.modalidad || 'Ad lucem',
-                    seccion: (!r.seccion || r.seccion === 'General') ? 'General' : r.seccion,
+                    seccion: (!r.seccion || r.seccion === 'All' || r.seccion === 'General') ? 'General' : r.seccion,
                     asistencias: {}
                 };
             }
@@ -439,6 +423,7 @@ function imprimirExcel() {
     <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
     <head>
         <meta charset="UTF-8">
+        <!--[if gte mso 9]>${xmlData}<![endif]-->
         <style>
             table { border-collapse: collapse; font-family: Arial, sans-serif; } 
             th, td { border: 1px solid black; padding: 5px; } 
@@ -466,15 +451,9 @@ async function cargarReportes() {
     try {
         const res = await fetch(`${API_URL}/reportes`);
         let data = await res.json();
-        
-        data = data.map(r => {
-            if(r.seccion === 'All') r.seccion = 'General';
-            return r;
-        });
-
         if (currentUser.rol === 'profesor') {
             const perms = (currentUser.grupos || '').split(',');
-            data = data.filter(r => perms.includes(r.grupo) || perms.includes(`${r.grupo}\vert{}${r.materia||''}`));
+            data = data.filter(r => perms.includes(r.grupo) || perms.includes(`${r.grupo}|${r.materia||''}`));
         }
         reportesCompleto = data;
         renderizarTablaReportes(reportesCompleto);
@@ -500,8 +479,8 @@ function aplicarFiltrosReportes() {
 
 function renderizarTablaReportes(datos) {
     document.getElementById('tabla-reportes').innerHTML = datos.map(r => {
-        let seccionLabel = (!r.seccion || r.seccion === 'General') ? 'General' : r.seccion;
-        return `<tr><td>${r.fecha}</td><td><b>${r.grupo}</b></td><td>${r.materia \vert{}\vert{} 'General'}</td><td>${seccionLabel}</td><td><a href="#" onclick="verReporteEstudiante('${r.estudiante_nombre}', 'reportes'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.estudiante_nombre}</a></td><td>${r.motivo}</td><td><i>${r.profesor_nombre}</i></td></tr>`;
+        let seccionLabel = (!r.seccion || r.seccion === 'All' || r.seccion === 'General') ? 'General' : r.seccion;
+        return `<tr><td>${r.fecha}</td><td><b>${r.grupo}</b></td><td>${r.materia || 'General'}</td><td>${seccionLabel}</td><td><a href="#" onclick="verReporteEstudiante('${r.estudiante_nombre}', 'reportes'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.estudiante_nombre}</a></td><td>${r.motivo}</td><td><i>${r.profesor_nombre}</i></td></tr>`;
     }).join('');
 }
 
@@ -524,12 +503,7 @@ async function cargarEdicionGrupo() {
     container.innerHTML = '<p style="text-align:center; padding:20px;">Cargando estudiantes...</p>';
     try {
         const res = await fetch(`${API_URL}/estudiantes?grupo=${grupo}`);
-        let rawEstudiantes = await res.json();
-        
-        const estudiantes = rawEstudiantes.map(e => {
-            if(e.seccion === 'All') e.seccion = 'General';
-            return e;
-        });
+        const estudiantes = await res.json();
         
         if(estudiantes.length === 0) {
             container.innerHTML = '<p style="text-align:center; padding:20px;">No hay alumnos en este grupo.</p>';
@@ -551,4 +525,270 @@ async function cargarEdicionGrupo() {
                 materiaOptions += `<option value="${m}" ${e.materia === m ? 'selected' : ''}>${m}</option>`;
             });
 
-            html += `<tr style="border-bottom:1px solid #ddd; transition:
+            html += `<tr style="border-bottom:1px solid #ddd; transition: background-color 0.3s;" id="row_${e.id}">
+                <td style="padding:5px;"><input type="text" id="envivo_nom_${e.id}" value="${e.nombre}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid #ccc; font-weight:bold; border-radius:4px; padding:8px;"></td>
+                
+                <td style="padding:5px;">
+                    <select id="envivo_mod_${e.id}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid var(--gr); color:var(--gr); font-weight:bold; border-radius:4px; padding:8px;">
+                        <option value="Ad lucem" ${e.modalidad==='Ad lucem'?'selected':''}>Ad lucem</option>
+                        <option value="360" ${e.modalidad==='360'?'selected':''}>360</option>
+                        <option value="Multicultural Inglés" ${e.modalidad==='Multicultural Inglés'?'selected':''}>Multi. Inglés</option>
+                        <option value="Multicultural Francés" ${e.modalidad==='Multicultural Francés'?'selected':''}>Multi. Francés</option>
+                        ${fallbackOption}
+                    </select>
+                </td>
+                
+                <td style="padding:5px;">
+                    <select id="envivo_mat_${e.id}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid #007BFF; color:#007BFF; font-weight:bold; border-radius:4px; padding:8px; width:100%;">
+                        ${materiaOptions}
+                    </select>
+                </td>
+                
+                <td style="padding:5px;">
+                    <select id="envivo_sec_${e.id}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid #8E44AD; color:#8E44AD; font-weight:bold; border-radius:4px; padding:8px; width:100%;">
+                        <option value="General" ${(!e.seccion || e.seccion === 'General' || e.seccion === 'All') ? 'selected' : ''}>General (Todos)</option>
+                        <option value="Intermedios" ${e.seccion === 'Intermedios' ? 'selected' : ''}>Intermedios</option>
+                        <option value="Avanzados" ${e.seccion === 'Avanzados' ? 'selected' : ''}>Avanzados</option>
+                        <option value="Informática 1" ${e.seccion === 'Informática 1' ? 'selected' : ''}>Informática 1</option>
+                        <option value="Informática 2" ${e.seccion === 'Informática 2' ? 'selected' : ''}>Informática 2</option>
+                    </select>
+                </td>
+                
+                <td style="padding:5px; text-align:center;">
+                    <input type="hidden" id="envivo_gpo_${e.id}" value="${e.grupo}">
+                    <button class="btn" style="background:#D32F2F; padding:8px;" onclick="eliminarEstudianteEnVivo(${e.id})" title="Eliminar alumno permanentemente">🗑️</button>
+                </td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    } catch(e) { console.error(e); }
+}
+
+async function guardarEstudianteEnVivo(id) {
+    const tr = document.getElementById(`row_${id}`);
+    tr.style.backgroundColor = '#eafaf1'; 
+    
+    const payload = {
+        id: id,
+        nombre: document.getElementById(`envivo_nom_${id}`).value,
+        grupo: document.getElementById(`envivo_gpo_${id}`).value, 
+        materia: document.getElementById(`envivo_mat_${id}`).value,
+        seccion: document.getElementById(`envivo_sec_${id}`).value,
+        modalidad: document.getElementById(`envivo_mod_${id}`).value
+    };
+    
+    await fetch(`${API_URL}/admin/estudiante`, { method: 'PUT', body: JSON.stringify(payload) });
+    
+    const ind = document.getElementById('edicion-indicador');
+    if(ind) {
+        ind.style.display = 'block';
+        ind.style.opacity = '1';
+        
+        clearTimeout(timeoutIndicador);
+        timeoutIndicador = setTimeout(() => {
+            ind.style.opacity = '0';
+            setTimeout(() => {
+                ind.style.display = 'none';
+                tr.style.backgroundColor = 'transparent';
+            }, 500);
+        }, 2000);
+    }
+}
+
+async function eliminarEstudianteEnVivo(id) {
+    if(!confirm('⚠️ ¿Estás seguro de que quieres eliminar a este alumno de forma permanente?')) return;
+    await fetch(`${API_URL}/admin/estudiante`, { method: 'DELETE', body: JSON.stringify({ id }) });
+    cargarEdicionGrupo(); 
+}
+
+/* --- ADMIN MAESTRO --- */
+function generarHTMLPermisos(id, rol, valoresStr) {
+    if(rol === 'admin') return `<div style="display:flex; align-items:center; height:100%;"><input type="hidden" id="${id}" value="ALL"><span style="width:100%; padding:10px; background:#eafaf1; border-radius:8px; color:var(--gr); font-weight:bold; text-align:center;">✅ Acceso Total (Admin)</span></div>`;
+    const valoresArray = valoresStr ? valoresStr.split(',') : [];
+    let opciones = [];
+    
+    if(rol === 'prefecto') {
+        opciones = [...new Set(clasesGlobal.map(c => c.grupo))];
+    } else if(rol === 'profesor') {
+        clasesGlobal.forEach(c => {
+            const baseStr = `${c.grupo}|${c.materia||''}`;
+            opciones.push(baseStr);
+            if(c.seccion) opciones.push(`${baseStr}|${c.seccion}`);
+        });
+        opciones = [...new Set(opciones)].sort();
+    }
+    
+    if (opciones.length === 0) return `<div style="padding:10px; font-size:0.8rem; color:#666; border:1px solid #ccc; border-radius:8px;">No hay clases o grupos creados en la base de datos.</div>`;
+
+    let html = `<div style="max-height:120px; overflow-y:auto; border:1px solid #ccc; border-radius:8px; padding:8px; background:#fff; font-size:0.85rem; display:grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap:5px;">`;
+    opciones.forEach(opt => {
+        const checked = (valoresArray.includes(opt) || valoresStr === 'ALL') ? 'checked' : '';
+        let labelOpt = opt;
+        if(rol === 'profesor') {
+            const parts = opt.split('|');
+            if(parts.length === 3 && parts[2]) {
+                labelOpt = `${parts[0]} - ${parts[1]} (Sec: ${parts[2]})`;
+            } else {
+                labelOpt = `${parts[0]} - ${parts[1]||'Gral'} (Toda la clase)`;
+            }
+        }
+        html += `<label style="cursor:pointer; display:flex; align-items:center; gap:5px; background:#f4f7f6; padding:4px; border-radius:4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${labelOpt}"><input type="checkbox" class="chk_${id}" value="${opt}" ${checked}> ${labelOpt}</label>`;
+    });
+    html += `</div>`;
+    return html;
+}
+
+function actualizarUIPermisosNuevo() {
+    const rol = document.getElementById('nuevo-prof-rol').value;
+    const container = document.getElementById('container-nuevo-permisos');
+    if(container) container.innerHTML = generarHTMLPermisos('nuevo-prof-grupos', rol, '');
+}
+
+function actualizarUIPermisosEdit(id) {
+    const rol = document.getElementById(`edit_prof_rol_${id}`).value;
+    const container = document.getElementById(`wrapper_permisos_${id}`);
+    if(container) container.innerHTML = generarHTMLPermisos(`edit_prof_grupos_${id}`, rol, '');
+}
+
+function getPermisosValues(id, rol) {
+    if(rol === 'admin') return 'ALL';
+    const chks = document.querySelectorAll(`.chk_${id}:checked`);
+    return Array.from(chks).map(c => c.value).join(',');
+}
+
+async function agregarGrupoCompleto() {
+    const nombresTexto = document.getElementById('nuevo-nombres-masivo').value;
+    const grupo = document.getElementById('nuevo-grupo').value;
+    const materia = document.getElementById('nuevo-materia').value;
+    const modalidad = document.getElementById('nuevo-modalidad').value;
+    const seccion = document.getElementById('nuevo-seccion').value;
+
+    if(!nombresTexto.trim() || !grupo) return alert('Por favor pega la lista de alumnos y escribe el nombre del grupo.');
+    const nombresArray = nombresTexto.split('\n').map(n => n.trim()).filter(n => n !== '');
+    if(nombresArray.length === 0) return alert('No se detectaron nombres válidos.');
+    
+    await fetch(`${API_URL}/admin/estudiantes-masivo`, { method: 'POST', body: JSON.stringify({ nombres: nombresArray, grupo, materia, seccion, modalidad }) });
+    alert(`✅ Creado grupo base "${grupo}" con ${nombresArray.length} alumnos.`);
+    document.getElementById('nuevo-nombres-masivo').value = '';
+    document.getElementById('nuevo-grupo').value = '';
+    document.getElementById('nuevo-materia').value = '';
+    if(document.getElementById('nuevo-seccion')) document.getElementById('nuevo-seccion').value = 'General';
+    configurarAccesos();
+}
+
+async function asignarMateriaAGrupo() {
+    const grupo = document.getElementById('materia-grupo-origen').value;
+    const materia = document.getElementById('materia-nueva').value;
+    const seccion = document.getElementById('seccion-nueva').value;
+
+    if(!grupo || !materia) return alert('Selecciona el grupo base y escribe la nueva materia.');
+    await fetch(`${API_URL}/admin/asignar-materia`, { method: 'POST', body: JSON.stringify({ grupo, materia, seccion }) });
+    alert(`✅ Clase de "${materia}" asignada al grupo ${grupo} con éxito.`);
+    document.getElementById('materia-nueva').value = '';
+    if(document.getElementById('seccion-nueva')) document.getElementById('seccion-nueva').value = 'General';
+    configurarAccesos();
+}
+
+async function copiarLista() {
+    const origen = document.getElementById('grupo-origen').value;
+    const destino = document.getElementById('grupo-destino').value;
+    if(!origen || !destino) return alert('Completa los campos');
+    await fetch(`${API_URL}/admin/copiar`, { method: 'POST', body: JSON.stringify({ origen, destino }) });
+    alert(`Lista copiada a ${destino}.`);
+    if(document.getElementById('grupo-origen')) document.getElementById('grupo-origen').value = ''; 
+    if(document.getElementById('grupo-destino')) document.getElementById('grupo-destino').value = '';
+    configurarAccesos();
+}
+
+async function actualizarGrupoMasivo() {
+    const grupo_actual = document.getElementById('admin-masivo-grupo-select').value;
+    const nuevo_grupo = document.getElementById('admin-masivo-nuevo-grupo').value;
+    const nueva_materia = document.getElementById('admin-masivo-materia').value;
+    const nueva_seccion = document.getElementById('admin-masivo-seccion').value;
+
+    if(!grupo_actual || !nuevo_grupo) return alert('Selecciona el grupo actual y escribe el nuevo nombre de grupo.');
+    if(confirm(`⚠️ ¿Seguro que quieres aplicar los cambios masivamente a todos los estudiantes de "${grupo_actual}"?`)) {
+        await fetch(`${API_URL}/admin/grupo-masivo`, { method: 'PUT', body: JSON.stringify({ grupo_actual, nuevo_grupo, nueva_materia, nueva_seccion }) });
+        alert('✅ Actualización masiva completada.');
+        configurarAccesos();
+    }
+}
+
+async function eliminarGrupoEntero() {
+    const select = document.getElementById('admin-borrar-grupo-select');
+    const grupo = select ? select.value : null;
+    if(!grupo) return alert('Selecciona un grupo para borrar del menú desplegable.');
+
+    const confirmacion = prompt(`⚠️ PELIGRO: Vas a borrar TODO el grupo "${grupo}".\n\nEscribe el nombre del grupo exactamente para confirmar:`);
+    if (confirmacion !== null && confirmacion.trim() === grupo.trim()) {
+        try {
+            const response = await fetch(`${API_URL}/admin/borrar-grupo`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ grupo: grupo.trim() }) });
+            if(response.ok) { alert(`✅ Grupo destruido.`); configurarAccesos(); } else { alert('Error del servidor.'); }
+        } catch (err) { alert(`❌ Error de conexión: ${err.message}`); }
+    } else {
+        alert("Cancelado.");
+    }
+}
+
+async function cargarProfesoresAdmin() {
+    try {
+        const res = await fetch(`${API_URL}/admin/profesores`);
+        const profes = await res.json();
+        const lista = document.getElementById('admin-lista-profesores');
+        if(!lista) return;
+        lista.innerHTML = profes.map(p => `
+            <div style="background:#fff; padding:15px; border-radius:8px; margin-bottom:10px; border:1px solid #ddd;">
+                <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
+                    <div style="flex:1;"><label style="font-size:0.75rem; font-weight:bold;">👤 Usuario:</label><input type="text" id="edit_prof_user_${p.id}" value="${p.username}" style="margin:0;"></div>
+                    <div style="flex:1;"><label style="font-size:0.75rem; font-weight:bold; color:#D32F2F;">🔑 Contraseña:</label><input type="text" id="edit_prof_pass_${p.id}" value="${p.password}" style="margin:0; border-color:#FFC107;"></div>
+                    <div style="flex:2;"><label style="font-size:0.75rem; font-weight:bold;">Nombre Real:</label><input type="text" id="edit_prof_nom_${p.id}" value="${p.nombre}" style="margin:0;"></div>
+                </div>
+                <div style="display:flex; gap:10px; align-items:stretch;">
+                    <div style="flex:1;">
+                        <label style="font-size:0.75rem; font-weight:bold;">Rol del Usuario:</label>
+                        <select id="edit_prof_rol_${p.id}" style="width:100%; height:45px; margin:0;" onchange="actualizarUIPermisosEdit(${p.id})">
+                            <option value="profesor" ${p.rol==='profesor'?'selected':''}>Profesor (Materia)</option>
+                            <option value="prefecto" ${p.rol==='prefecto'?'selected':''}>Prefecto (Grupos)</option>
+                            <option value="admin" ${p.rol==='admin'?'selected':''}>Administrador</option>
+                        </select>
+                    </div>
+                    <div id="wrapper_permisos_${p.id}" style="flex:2;">${generarHTMLPermisos(`edit_prof_grupos_${p.id}`, p.rol, p.grupos)}</div>
+                    <div style="display:flex; flex-direction:column; gap:5px;">
+                        <button class="btn" style="background:#FFC107; color:#000; height:100%; font-weight:bold; padding:10px;" onclick="editarProfesor(${p.id})">💾 Guardar</button>
+                        <button class="btn" style="background:#D32F2F; height:100%; padding:10px;" onclick="eliminarProfesor(${p.id})">🗑️</button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } catch(e) { console.error(e); }
+}
+
+async function editarProfesor(id) {
+    const username = document.getElementById(`edit_prof_user_${id}`).value, password = document.getElementById(`edit_prof_pass_${id}`).value, nombre = document.getElementById(`edit_prof_nom_${id}`).value, rol = document.getElementById(`edit_prof_rol_${id}`).value;
+    const grupos = getPermisosValues(`edit_prof_grupos_${id}`, rol);
+    
+    if(!grupos && rol !== 'admin') return alert('Debes seleccionar al menos un permiso marcando las casillas.');
+    await fetch(`${API_URL}/admin/profesor`, { method: 'PUT', body: JSON.stringify({ id, username, password, nombre, rol, grupos }) });
+    alert('Usuario actualizado.'); 
+    cargarProfesoresAdmin();
+}
+
+async function eliminarProfesor(id) { 
+    if(confirm('¿Borrar a este usuario?')) { 
+        await fetch(`${API_URL}/admin/profesor`, { method: 'DELETE', body: JSON.stringify({ id }) }); 
+        cargarProfesoresAdmin(); 
+    } 
+}
+
+async function agregarProfesor() {
+    const username = document.getElementById('nuevo-prof-user').value, password = document.getElementById('nuevo-prof-pass').value, nombre = document.getElementById('nuevo-prof-nom').value, rol = document.getElementById('nuevo-prof-rol').value;
+    const grupos = getPermisosValues('nuevo-prof-grupos', rol);
+    
+    if(!username || !password) return alert('Usuario y clave obligatorios');
+    if(!grupos && rol !== 'admin') return alert('Debes seleccionar al menos un permiso marcando las casillas.');
+    
+    await fetch(`${API_URL}/admin/profesor`, { method: 'POST', body: JSON.stringify({ username, password, nombre, rol, grupos }) });
+    alert('Personal agregado correctamente.');
+    cargarProfesoresAdmin();
+}

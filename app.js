@@ -1,4 +1,4 @@
-const APP_VERSION = "v41 - Edición Reparada";
+const APP_VERSION = "v42 - Secciones y Materias Dropdown";
 console.log("Iniciando Chemlist: " + APP_VERSION);
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -95,7 +95,6 @@ async function configurarAccesos() {
         let todosLosGruposUnicos = [...new Set(clasesGlobal.map(c => c.grupo))];
         let opcionesAdmin = '<option value="">Selecciona un grupo...</option>' + todosLosGruposUnicos.map(g => `<option value="${g}">${g}</option>`).join('');
         
-        // Listas blindadas contra el tropiezo
         if(document.getElementById('admin-grupo-select')) document.getElementById('admin-grupo-select').innerHTML = opcionesAdmin;
         if(document.getElementById('edicion-grupo-select')) document.getElementById('edicion-grupo-select').innerHTML = opcionesAdmin;
         if(document.getElementById('admin-borrar-grupo-select')) document.getElementById('admin-borrar-grupo-select').innerHTML = opcionesAdmin;
@@ -192,7 +191,7 @@ async function cargarAlumnos() {
     for (const mod in gruposModalidad) {
         html += `<h4 style="margin-top:15px; margin-bottom:10px; color:var(--gr); border-bottom:2px solid var(--yw); padding-bottom:5px;">🏫 ${mod}</h4>`;
         html += gruposModalidad[mod].map(a => {
-            let tags = a.seccion ? `<span class="modalidad-tag" style="background:#eafaf1; color:#8E44AD; font-weight:bold;">Sec: ${a.seccion}</span>` : '';
+            let tags = (a.seccion && a.seccion !== 'All') ? `<span class="modalidad-tag" style="background:#eafaf1; color:#8E44AD; font-weight:bold;">Sec: ${a.seccion}</span>` : '';
             return `
             <div class="student-row">
                 <strong><a href="#" onclick="verReporteEstudianteDesdeLista('${a.nombre}'); return false;" style="color:var(--nav); text-decoration:none; border-bottom:1px dashed var(--nav); cursor:pointer;">${a.nombre}</a></strong> 
@@ -296,7 +295,8 @@ function renderizarTablaHistorial(datos) {
         datos.map(r => {
             let color = r.estado === 'Presente' ? 'var(--gr)' : r.estado === 'Falta' ? '#D32F2F' : '#007BFF';
             let bgFalta = r.estado === 'Falta' ? 'background-color:#ffe6e6;' : '';
-            return `<tr><td>${getDiaSemana(r.fecha)}</td><td>${r.fecha}</td><td>${r.hora || '-'}</td><td><strong>${r.grupo}</strong></td><td>${r.materia || 'General'}</td><td>${r.seccion || '-'}</td><td>${r.modalidad || 'Ad lucem'}</td><td><a href="#" onclick="verReporteEstudiante('${r.nombre}', 'historial'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.nombre}</a></td><td style="color:${color}; font-weight:bold; ${bgFalta}">${r.estado}</td></tr>`;
+            let seccionLabel = (r.seccion === 'All' || !r.seccion) ? 'All' : r.seccion;
+            return `<tr><td>${getDiaSemana(r.fecha)}</td><td>${r.fecha}</td><td>${r.hora || '-'}</td><td><strong>${r.grupo}</strong></td><td>${r.materia || 'General'}</td><td>${seccionLabel}</td><td>${r.modalidad || 'Ad lucem'}</td><td><a href="#" onclick="verReporteEstudiante('${r.nombre}', 'historial'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.nombre}</a></td><td style="color:${color}; font-weight:bold; ${bgFalta}">${r.estado}</td></tr>`;
         }).join('') + '</tbody>';
     } else {
         if(datos.length === 0) {
@@ -320,7 +320,7 @@ function renderizarTablaHistorial(datos) {
                     diaStr: getDiaSemana(r.fecha),
                     nombre: r.nombre,
                     modalidad: r.modalidad || 'Ad lucem',
-                    seccion: r.seccion || '-',
+                    seccion: (r.seccion === 'All' || !r.seccion) ? 'All' : r.seccion,
                     asistencias: {}
                 };
             }
@@ -478,7 +478,10 @@ function aplicarFiltrosReportes() {
 }
 
 function renderizarTablaReportes(datos) {
-    document.getElementById('tabla-reportes').innerHTML = datos.map(r => `<tr><td>${r.fecha}</td><td><b>${r.grupo}</b></td><td>${r.materia || 'General'}</td><td>${r.seccion || '-'}</td><td><a href="#" onclick="verReporteEstudiante('${r.estudiante_nombre}', 'reportes'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.estudiante_nombre}</a></td><td>${r.motivo}</td><td><i>${r.profesor_nombre}</i></td></tr>`).join('');
+    document.getElementById('tabla-reportes').innerHTML = datos.map(r => {
+        let seccionLabel = (r.seccion === 'All' || !r.seccion) ? 'All' : r.seccion;
+        return `<tr><td>${r.fecha}</td><td><b>${r.grupo}</b></td><td>${r.materia || 'General'}</td><td>${seccionLabel}</td><td><a href="#" onclick="verReporteEstudiante('${r.estudiante_nombre}', 'reportes'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.estudiante_nombre}</a></td><td>${r.motivo}</td><td><i>${r.profesor_nombre}</i></td></tr>`;
+    }).join('');
 }
 
 function imprimirPDFReportes() {
@@ -507,13 +510,26 @@ async function cargarEdicionGrupo() {
             return;
         }
 
+        // Obtener la lista de todas las materias únicas en la escuela para el menú desplegable
+        const materiasUnicas = [...new Set(clasesGlobal.map(c => c.materia).filter(m => m))];
+
         let html = '<table style="width:100%; min-width:800px; border-collapse:collapse; font-size:0.9rem;">';
         html += '<thead style="background:var(--nav); color:#fff;"><tr><th style="padding:10px;">Nombre</th><th style="padding:10px;">Modalidad</th><th style="padding:10px;">Materia</th><th style="padding:10px;">Sección</th><th style="padding:10px; text-align:center;">Acción</th></tr></thead><tbody>';
         
         estudiantes.forEach(e => {
             const fallbackOption = ['Ad lucem','360','Multicultural Inglés','Multicultural Francés'].includes(e.modalidad) ? '' : `<option value="${e.modalidad}" selected>${e.modalidad}</option>`;
+            
+            // Construir opciones dinámicas de Materias
+            let materiaOptions = `<option value="">General (Sin materia)</option>`;
+            let matSet = new Set(materiasUnicas);
+            if(e.materia) matSet.add(e.materia); // Asegurar que la materia actual exista en la lista
+            [...matSet].sort().forEach(m => {
+                materiaOptions += `<option value="${m}" ${e.materia === m ? 'selected' : ''}>${m}</option>`;
+            });
+
             html += `<tr style="border-bottom:1px solid #ddd; transition: background-color 0.3s;" id="row_${e.id}">
                 <td style="padding:5px;"><input type="text" id="envivo_nom_${e.id}" value="${e.nombre}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid #ccc; font-weight:bold; border-radius:4px; padding:8px;"></td>
+                
                 <td style="padding:5px;">
                     <select id="envivo_mod_${e.id}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid var(--gr); color:var(--gr); font-weight:bold; border-radius:4px; padding:8px;">
                         <option value="Ad lucem" ${e.modalidad==='Ad lucem'?'selected':''}>Ad lucem</option>
@@ -523,8 +539,21 @@ async function cargarEdicionGrupo() {
                         ${fallbackOption}
                     </select>
                 </td>
-                <td style="padding:5px;"><input type="text" id="envivo_mat_${e.id}" value="${e.materia || ''}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid #ccc; border-radius:4px; padding:8px;" placeholder="Materia"></td>
-                <td style="padding:5px;"><input type="text" id="envivo_sec_${e.id}" value="${e.seccion || ''}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid #ccc; border-radius:4px; padding:8px;" placeholder="Ej. Avanzados"></td>
+                
+                <td style="padding:5px;">
+                    <select id="envivo_mat_${e.id}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid #007BFF; color:#007BFF; font-weight:bold; border-radius:4px; padding:8px; width:100%;">
+                        ${materiaOptions}
+                    </select>
+                </td>
+                
+                <td style="padding:5px;">
+                    <select id="envivo_sec_${e.id}" onchange="guardarEstudianteEnVivo(${e.id})" style="margin:0; border:1px solid #8E44AD; color:#8E44AD; font-weight:bold; border-radius:4px; padding:8px; width:100%;">
+                        <option value="All" ${(!e.seccion || e.seccion === 'All') ? 'selected' : ''}>All (A y B combinadas)</option>
+                        <option value="A" ${e.seccion === 'A' ? 'selected' : ''}>Sección A</option>
+                        <option value="B" ${e.seccion === 'B' ? 'selected' : ''}>Sección B</option>
+                    </select>
+                </td>
+                
                 <td style="padding:5px; text-align:center;">
                     <input type="hidden" id="envivo_gpo_${e.id}" value="${e.grupo}">
                     <button class="btn" style="background:#D32F2F; padding:8px;" onclick="eliminarEstudianteEnVivo(${e.id})" title="Eliminar alumno permanentemente">🗑️</button>

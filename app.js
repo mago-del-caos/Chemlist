@@ -1,4 +1,4 @@
-const APP_VERSION = "v44 - Sistema de Secciones Maestro";
+const APP_VERSION = "v46 - Edición Masiva de Materias";
 console.log("Iniciando Chemlist: " + APP_VERSION);
 
 window.addEventListener('DOMContentLoaded', () => {
@@ -291,16 +291,20 @@ function renderizarTablaHistorial(datos) {
     const tabla = document.getElementById('tabla-historial');
     
     if(vista === 'lista') {
-        tabla.innerHTML = '<thead><tr><th>Día</th><th>Fecha</th><th>Hora</th><th>Grupo</th><th>Materia</th><th>Sección</th><th>Modalidad</th><th>Nombre</th><th>Estado</th></tr></thead><tbody>' + 
-        datos.map(r => {
-            let color = r.estado === 'Presente' ? 'var(--gr)' : r.estado === 'Falta' ? '#D32F2F' : '#007BFF';
-            let bgFalta = r.estado === 'Falta' ? 'background-color:#ffe6e6;' : '';
-            let seccionLabel = (!r.seccion || r.seccion === 'All' || r.seccion === 'General') ? 'General' : r.seccion;
-            return `<tr><td>${getDiaSemana(r.fecha)}</td><td>${r.fecha}</td><td>${r.hora || '-'}</td><td><strong>${r.grupo}</strong></td><td>${r.materia || 'General'}</td><td>${seccionLabel}</td><td>${r.modalidad || 'Ad lucem'}</td><td><a href="#" onclick="verReporteEstudiante('${r.nombre}', 'historial'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.nombre}</a></td><td style="color:${color}; font-weight:bold; ${bgFalta}">${r.estado}</td></tr>`;
-        }).join('') + '</tbody>';
+        if(datos.length === 0) {
+            tabla.innerHTML = '<thead><tr><th>Día</th><th>Fecha</th><th>Hora</th><th>Grupo</th><th>Materia</th><th>Sección</th><th>Modalidad</th><th>Nombre</th><th>Estado</th></tr></thead><tbody><tr><td colspan="9" style="text-align:center; padding:20px; color:#555;">No hay registros de asistencia que coincidan con estos filtros.<br><br><i>Nota: Si borraste y volviste a crear este grupo recientemente, los registros antiguos se separaron. ¡Toma lista hoy para verlos aparecer aquí!</i></td></tr></tbody>';
+        } else {
+            tabla.innerHTML = '<thead><tr><th>Día</th><th>Fecha</th><th>Hora</th><th>Grupo</th><th>Materia</th><th>Sección</th><th>Modalidad</th><th>Nombre</th><th>Estado</th></tr></thead><tbody>' + 
+            datos.map(r => {
+                let color = r.estado === 'Presente' ? 'var(--gr)' : r.estado === 'Falta' ? '#D32F2F' : '#007BFF';
+                let bgFalta = r.estado === 'Falta' ? 'background-color:#ffe6e6;' : '';
+                let seccionLabel = (!r.seccion || r.seccion === 'All' || r.seccion === 'General') ? 'General' : r.seccion;
+                return `<tr><td>${getDiaSemana(r.fecha)}</td><td>${r.fecha}</td><td>${r.hora || '-'}</td><td><strong>${r.grupo}</strong></td><td>${r.materia || 'General'}</td><td>${seccionLabel}</td><td>${r.modalidad || 'Ad lucem'}</td><td><a href="#" onclick="verReporteEstudiante('${r.nombre}', 'historial'); return false;" style="color:var(--nav); font-weight:600; text-decoration:underline;">${r.nombre}</a></td><td style="color:${color}; font-weight:bold; ${bgFalta}">${r.estado}</td></tr>`;
+            }).join('') + '</tbody>';
+        }
     } else {
         if(datos.length === 0) {
-            tabla.innerHTML = '<tbody><tr><td style="text-align:center; padding:20px;">No hay datos en este rango.</td></tr></tbody>';
+            tabla.innerHTML = '<tbody><tr><td style="text-align:center; padding:20px; color:#555;">No hay datos en este rango.</td></tr></tbody>';
             return;
         }
         
@@ -491,10 +495,16 @@ function imprimirPDFReportes() {
     html2pdf().set({ margin: 10, filename: `Reportes_Chemlist_${new Date().toISOString().split('T')[0]}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' } }).from(elemento).save().then(() => titulo.style.display = 'none');
 }
 
-/* --- EDICIÓN EN TIEMPO REAL --- */
+/* --- EDICIÓN EN TIEMPO REAL Y MASIVA --- */
 async function cargarEdicionGrupo() {
     const grupo = document.getElementById('edicion-grupo-select').value;
     const container = document.getElementById('edicion-lista-estudiantes');
+    
+    const panelMasivo = document.getElementById('edicion-masiva-panel');
+    if(panelMasivo) {
+        panelMasivo.style.display = grupo ? 'block' : 'none';
+    }
+
     if(!grupo) { 
         container.innerHTML = '<p style="text-align:center; padding:20px; color:#777;">Selecciona un grupo arriba para comenzar a editar.</p>'; 
         return; 
@@ -600,6 +610,44 @@ async function eliminarEstudianteEnVivo(id) {
     if(!confirm('⚠️ ¿Estás seguro de que quieres eliminar a este alumno de forma permanente?')) return;
     await fetch(`${API_URL}/admin/estudiante`, { method: 'DELETE', body: JSON.stringify({ id }) });
     cargarEdicionGrupo(); 
+}
+
+// NUEVA FUNCIÓN: Asignar MATERIA a todos de golpe en la pestaña Edición
+async function asignarMateriaMasivaEnEdicion() {
+    const grupo = document.getElementById('edicion-grupo-select').value;
+    const materia = document.getElementById('edicion-masiva-materia').value.trim();
+
+    if(!grupo) return alert('⚠️ Selecciona un grupo arriba primero.');
+    if(!materia) return alert('⚠️ Escribe el nombre de la materia a aplicar.');
+
+    if(confirm(`⚠️ ¿Seguro que quieres asignar la materia "${materia}" a TODOS los alumnos del grupo "${grupo}"?`)) {
+        try {
+            const res = await fetch(`${API_URL}/admin/grupo-masivo`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    grupo_actual: grupo,
+                    nuevo_grupo: grupo,
+                    nueva_materia: materia
+                })
+            });
+            
+            if(res.ok) {
+                const ind = document.getElementById('edicion-indicador');
+                if(ind) {
+                    ind.style.display = 'block';
+                    ind.style.opacity = '1';
+                    setTimeout(() => { ind.style.opacity = '0'; setTimeout(() => ind.style.display = 'none', 500); }, 2000);
+                }
+                document.getElementById('edicion-masiva-materia').value = '';
+                cargarEdicionGrupo();
+                configurarAccesos();
+            } else {
+                alert('Error en el servidor al guardar masivamente.');
+            }
+        } catch(e) {
+            alert('Error de conexión: ' + e.message);
+        }
+    }
 }
 
 /* --- ADMIN MAESTRO --- */

@@ -1,4 +1,4 @@
-const CHEMLIST_VERSION = "v42-2026.09.04";
+const CHEMLIST_VERSION = "v46-2026.09.04";
 console.log("Chemlist cargado correctamente en la versión: " + CHEMLIST_VERSION);
 
 // Mostrar la versión automáticamente en la interfaz si existe un contenedor para ello
